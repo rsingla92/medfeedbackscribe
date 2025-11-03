@@ -1,14 +1,5 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
+<!-- Improved compatibility of back to top link: See: https://github.com/rsingla92/medfeedbackscribe/pull/73 -->
 <a name="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
 
 <!-- PROJECT SHIELDS -->
 <!--
@@ -25,28 +16,27 @@
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
-
-
 <!-- PROJECT LOGO -->
+
 <br />
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+  <a href="https://github.com/rsingla92/medfeedbackscribe">
+    <img src="images/logo.png" alt="Logo" width="100" height="100">
   </a>
 
-  <h3 align="center">Best-README-Template</h3>
+  <h3 align="center">Medical Feedback Scribe</h3>
 
   <p align="center">
-    An awesome README template to jumpstart your projects!
+    AI-powered real-time assessment companion for medical education.
     <br />
-    <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/rsingla92/medfeedbackscribe/docs"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/othneildrew/Best-README-Template">View Demo</a>
+    <a href="https://github.com/rsingla92/medfeedbackscribe/demo">View Demo</a>
     ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Report Bug</a>
+    <a href="https://github.com/rsingla92/medfeedbackscribe/issues">Report Bug</a>
     ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Request Feature</a>
+    <a href="https://github.com/rsingla92/medfeedbackscribe/issues">Request Feature</a>
   </p>
 </div>
 
@@ -78,40 +68,50 @@
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
+[![MedScribe AI Screenshot][product-screenshot]](https://github.com/rsingla92/medfeedbackscribe)
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+**MedScribe AI** is a mobile-first, privacy-compliant web app that captures and analyzes real-time feedback conversations between residents/students and supervisors.  
+It automatically records, transcribes, classifies, and visualizes structured performance data — all while maintaining strict PHI privacy and compliance.
 
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+**Why MedScribe AI?**
+* **Frictionless capture:** One-tap recording replaces manual form entry — letting supervisors and residents focus on authentic feedback.  
+* **AI-driven insight:** Whisper handles transcription, GPT models classify CanMEDS skills, EPA stages, and milestones in under 60 seconds.  
+* **Bias-aware analytics:** Integrated bias detection flags gendered or loaded language to promote equitable evaluations.  
+* **Smart dashboards:** Visualize skill progression, milestones, and topic trends over time using intuitive charts.  
+* **Privacy-first design:** PHI is anonymized before processing; raw audio is deleted immediately after analysis.  
+* **Integration-ready:** Structured exports (JSON/CSV/PDF) map directly to institutional systems like Entrada or One45.
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
-
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
-
-Use the `BLANK_README.md` to get started.
+MedScribe AI transforms feedback into structured, actionable intelligence — empowering both learners and educators with real-time, data-driven reflection.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
 ### Built With
+MedScribe AI is built using a modern, modular, and scalable tech stack optimized for **low-latency AI processing**, **mobile-first UX**, and **privacy-compliant data handling**. MedScribe AI integrates **Whisper**, **GPT-4**, and **Chart.js** to provide seamless, end-to-end AI-driven feedback analytics.
 
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
+#### Frontend
+* [![Next][Next.js]][Next-url] — Mobile-first React framework for PWA deployment  
+* [![React][React.js]][React-url] — Component-based UI architecture  
+* [![Chart.js][Chartjs-shield]](https://www.chartjs.org/) — Interactive analytics dashboards  
+* [![TailwindCSS][Tailwind-shield]](https://tailwindcss.com/) — Utility-first responsive styling  
 
-* [![Next][Next.js]][Next-url]
-* [![React][React.js]][React-url]
-* [![Vue][Vue.js]][Vue-url]
-* [![Angular][Angular.io]][Angular-url]
-* [![Svelte][Svelte.dev]][Svelte-url]
-* [![Laravel][Laravel.com]][Laravel-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
+#### Backend
+* [![FastAPI][FastAPI-shield]](https://fastapi.tiangolo.com/) — High-performance Python backend for AI pipelines  
+* [![Node.js][Node-shield]](https://nodejs.org/) — Optional lightweight API microservices  
+* [![PostgreSQL][Postgres-shield]](https://www.postgresql.org/) — Structured and encrypted data storage  
+* [![Supabase][Supabase-shield]](https://supabase.com/) — Managed Postgres with authentication and file storage  
+
+#### Integrations & AI
+* [![OpenAI][OpenAI-shield]](https://openai.com/) — Whisper (speech-to-text) + GPT (NLP classification)  
+* [![Stripe][Stripe-shield]](https://stripe.com/) — Subscription management for premium features  
+* [![SendGrid][SendGrid-shield]](https://sendgrid.com/) — Email notifications and weekly reports  
+
+#### DevOps & Monitoring
+* [![Vercel][Vercel-shield]](https://vercel.com/) — Frontend hosting with CI/CD  
+* [![Fly.io][Flyio-shield]](https://fly.io/) — Containerized backend deployment  
+* [![Sentry][Sentry-shield]](https://sentry.io/) — Application monitoring and error tracking  
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -120,110 +120,64 @@ This section should list any major frameworks/libraries used to bootstrap your p
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Prerequisites
-
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
 
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
-
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/your_username_/Project-Name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- ROADMAP -->
 ## Roadmap
+### ✅ Phase 1 – Core MVP (Completed / In Progress)
+- [ ] Audio recording module with auto-stop and offline caching  
+- [ ] Whisper-based transcription pipeline  
+- [ ] GPT-based NLP extraction for CanMEDS, EPA stage, and milestones  
+- [ ] Bias detection and flagging system  
+- [ ] Interactive analytics dashboards (Chart.js)  
+- [ ] Privacy hooks — PHI redaction and post-processing audio deletion  
+- [ ] Stripe integration for premium analytics  
 
-- [x] Add Changelog
-- [x] Add back to top links
-- [ ] Add Additional Templates w/ Examples
-- [ ] Add "components" document to easily copy & paste sections of the readme
-- [ ] Multi-language Support
-    - [ ] Chinese
-    - [ ] Spanish
+### 🚧 Phase 2 – Expansion & Integrations (Planned)
+- [ ] Supervisor role with review & bias resolution queue  
+- [ ] Offline recording + deferred sync  
+- [ ] Institutional integrations (One45 / Entrada / MedHub)  
+- [ ] Explainable AI summaries for transparency  
+- [ ] Group and program-level analytics + benchmarking  
+- [ ] Automated weekly email summaries via SendGrid / Resend  
 
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
+### 🌍 Phase 3 – Scalability & Advanced Features (Future)
+- [ ] Voice identification (multi-speaker separation)  
+- [ ] Multilingual transcription support (EN/FR initially)  
+- [ ] Custom topic tagging + institutional vocabularies  
+- [ ] API endpoints for external reporting and dashboards  
+- [ ] Supervisor and resident benchmarking network (cross-institutional)  
+
+See the [open issues](https://github.com/rsingla92/medfeedbackscribe/issues) for a full list of ongoing work, proposed features, and discussions.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- CONTRIBUTING -->
 ## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- LICENSE -->
 ## License
-
 Distributed under the MIT License. See `LICENSE.txt` for more information.
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- CONTACT -->
 ## Contact
-
 Your Name - [@your_twitter](https://twitter.com/your_username) - email@example.com
-
 Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
-
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
-
 * [Choose an Open Source License](https://choosealicense.com)
 * [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
 * [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
@@ -235,20 +189,30 @@ Use this space to list resources you find helpful and would like to give credit 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
-
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+[Chartjs-shield]: https://img.shields.io/badge/Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white
+[Tailwind-shield]: https://img.shields.io/badge/TailwindCSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white
+[FastAPI-shield]: https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white
+[Node-shield]: https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white
+[Postgres-shield]: https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white
+[Supabase-shield]: https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white
+[OpenAI-shield]: https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white
+[Stripe-shield]: https://img.shields.io/badge/Stripe-008CDD?style=for-the-badge&logo=stripe&logoColor=white
+[SendGrid-shield]: https://img.shields.io/badge/SendGrid-1A82E2?style=for-the-badge&logo=sendgrid&logoColor=white
+[Vercel-shield]: https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white
+[Flyio-shield]: https://img.shields.io/badge/Fly.io-5A67D8?style=for-the-badge&logo=flydotio&logoColor=white
+[Sentry-shield]: https://img.shields.io/badge/Sentry-362D59?style=for-the-badge&logo=sentry&logoColor=white
 [contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
+[contributors-url]: https://github.com/rsingla92/medfeedbackscribe/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
+[forks-url]: https://github.com/rsingla92/medfeedbackscribe/network/members
 [stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
+[stars-url]: https://github.com/rsingla92/medfeedbackscribe/stargazers
 [issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
+[issues-url]: https://github.com/rsingla92/medfeedbackscribe/issues
 [license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
+[license-url]: https://github.com/rsingla92/medfeedbackscribe/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/othneildrew
 [product-screenshot]: images/screenshot.png
