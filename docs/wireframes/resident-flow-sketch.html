@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedScribe - Wireframe Sketch</title>
+<style>
+  /* Intentionally rough: system fonts, thin borders, no color — this is a sketch */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #fafafa; color: #222; }
+  .phone-frame {
+    width: 375px; min-height: 700px; margin: 30px auto; border: 2px solid #ccc;
+    border-radius: 24px; background: #fff; padding: 20px 16px; position: relative;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .status-bar { font-size: 11px; color: #999; text-align: center; margin-bottom: 16px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 8px; margin-top: 20px; }
+
+  /* Screen 1: Home / New Recording */
+  .screen { margin-bottom: 40px; padding-bottom: 30px; border-bottom: 2px dashed #ddd; }
+  .screen:last-child { border-bottom: none; }
+  .screen-title { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; background: #f0f0f0; padding: 4px 8px; display: inline-block; border-radius: 4px; }
+
+  .record-btn {
+    width: 120px; height: 120px; border-radius: 50%; border: 3px solid #333;
+    display: flex; align-items: center; justify-content: center; margin: 30px auto;
+    cursor: pointer; font-size: 14px; font-weight: 600; background: #fff;
+  }
+  .record-btn .mic { font-size: 36px; }
+
+  .field { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .field-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .field-value { font-size: 14px; }
+  .field-value.placeholder { color: #ccc; }
+
+  .form-preview { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-top: 12px; }
+  .form-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .form-row:last-child { border-bottom: none; }
+  .form-row .label { color: #666; }
+  .form-row .value { font-weight: 500; }
+  .competency-tag { display: inline-block; padding: 2px 8px; border: 1px solid #ccc; border-radius: 12px; font-size: 11px; margin: 2px; }
+
+  .btn { display: block; width: 100%; padding: 14px; border: 2px solid #333; border-radius: 10px; background: #fff; font-size: 15px; font-weight: 600; text-align: center; cursor: pointer; margin-top: 10px; }
+  .btn.primary { background: #333; color: #fff; }
+
+  .transcript-box { background: #f7f7f7; border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.5; color: #444; margin-top: 8px; border: 1px solid #eee; }
+
+  .tab-bar { display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #eee; margin-top: 20px; font-size: 11px; color: #999; }
+  .tab-bar .tab { text-align: center; }
+  .tab-bar .tab.active { color: #333; font-weight: 600; }
+
+  .consent-banner { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #666; margin-bottom: 16px; line-height: 1.4; }
+  .consent-banner strong { color: #333; }
+
+  /* Recording state */
+  .recording-indicator { text-align: center; margin: 8px 0; }
+  .recording-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #333; margin-right: 6px; }
+  .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 40px; margin: 16px 0; }
+  .waveform .bar { width: 3px; background: #333; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: Start New Feedback Session -->
+<div class="phone-frame">
+  <div class="status-bar">9:41 AM &nbsp;&nbsp;&nbsp; UBC Family Medicine</div>
+  <div class="screen-title">Screen 1 &mdash; Home</div>
+
+  <h1>MedScribe</h1>
+  <div class="subtitle">Capture feedback. Skip the forms.</div>
+
+  <!-- Consent notice: shown once per session, resident confirms preceptor is aware -->
+  <div class="consent-banner">
+    <strong>Consent reminder:</strong> Confirm your preceptor agrees to have their verbal feedback recorded and processed.
+  </div>
+
+  <div class="section-label">Quick Start</div>
+
+  <div class="field">
+    <div class="field-label">Preceptor</div>
+    <div class="field-value">Dr. George Chang</div>
+  </div>
+  <div class="field">
+    <div class="field-label">Rotation</div>
+    <div class="field-value">General Surgery — Week 1</div>
+  </div>
+  <div class="field">
+    <div class="field-label">Form Type</div>
+    <div class="field-value">Daily T-Res Assessment</div>
+  </div>
+
+  <!-- The big action: tap to record -->
+  <!-- Design decision: one giant button. The resident's core loop is
+       "tap, hand phone to preceptor, preceptor talks, done."
+       Everything else is secondary. -->
+  <div class="record-btn">
+    <span class="mic">&#9679;</span>
+  </div>
+  <div style="text-align:center; font-size:13px; color:#888;">Tap to record feedback</div>
+
+  <div class="tab-bar">
+    <div class="tab active">Record</div>
+    <div class="tab">History</div>
+    <div class="tab">Settings</div>
+  </div>
+</div>
+
+<!-- SCREEN 2: Recording in Progress -->
+<div class="phone-frame">
+  <div class="status-bar">9:42 AM &nbsp;&nbsp;&nbsp; Recording...</div>
+  <div class="screen-title">Screen 2 &mdash; Recording</div>
+
+  <h1 style="text-align:center;">Listening...</h1>
+
+  <div class="recording-indicator">
+    <span class="recording-dot"></span>
+    <span style="font-size:13px; color:#333;">2:34</span>
+  </div>
+
+  <!-- Simple waveform visualization to show it's capturing -->
+  <div class="waveform">
+    <div class="bar" style="height:12px;"></div>
+    <div class="bar" style="height:24px;"></div>
+    <div class="bar" style="height:18px;"></div>
+    <div class="bar" style="height:32px;"></div>
+    <div class="bar" style="height:22px;"></div>
+    <div class="bar" style="height:38px;"></div>
+    <div class="bar" style="height:28px;"></div>
+    <div class="bar" style="height:16px;"></div>
+    <div class="bar" style="height:34px;"></div>
+    <div class="bar" style="height:20px;"></div>
+    <div class="bar" style="height:30px;"></div>
+    <div class="bar" style="height:14px;"></div>
+  </div>
+
+  <div class="consent-banner" style="text-align:center;">
+    Hand your phone to your preceptor &mdash; or set it on the desk between you.
+  </div>
+
+  <!-- Design decision: no transcript shown during recording.
+       This is intentional — we don't want the preceptor watching
+       words appear on screen while they talk. That changes what they say.
+       Show transcript AFTER, during review. -->
+
+  <div class="btn primary" style="margin-top:40px;">Stop Recording</div>
+</div>
+
+<!-- SCREEN 3: Review & Submit -->
+<div class="phone-frame">
+  <div class="status-bar">9:45 AM &nbsp;&nbsp;&nbsp; Review</div>
+  <div class="screen-title">Screen 3 &mdash; Review Structured Output</div>
+
+  <h1>Review Assessment</h1>
+  <div class="subtitle">Dr. Chang &rarr; You &bull; General Surgery &bull; Mar 24</div>
+
+  <div class="section-label">Transcript</div>
+  <div class="transcript-box">
+    "Overall you did a good job today. Your history was thorough — you caught the
+    family history of colon cancer which was important for this patient. Your physical
+    exam technique needs work, especially abdominal palpation — you were too superficial.
+    Your plan was reasonable but you should have considered imaging earlier. You
+    communicated well with the patient and they seemed comfortable with you."
+  </div>
+
+  <div class="section-label">Auto-Generated Assessment</div>
+  <!-- Design decision: show the LLM's structured extraction so the resident
+       can verify it matches what was actually said. Resident is the quality gate. -->
+  <div class="form-preview">
+    <div class="form-row">
+      <span class="label">History Taking</span>
+      <span class="value">Meets expectations</span>
+    </div>
+    <div class="form-row">
+      <span class="label">Physical Examination</span>
+      <span class="value">Below expectations</span>
+    </div>
+    <div class="form-row">
+      <span class="label">Clinical Reasoning</span>
+      <span class="value">Meets expectations</span>
+    </div>
+    <div class="form-row">
+      <span class="label">Communication</span>
+      <span class="value">Above expectations</span>
+    </div>
+  </div>
+
+  <div class="section-label">Mapped Competencies (CanMEDS)</div>
+  <div style="margin-bottom: 12px;">
+    <span class="competency-tag">Medical Expert</span>
+    <span class="competency-tag">Communicator</span>
+    <span class="competency-tag">Scholar</span>
+  </div>
+
+  <div class="section-label">Narrative Feedback (auto-generated)</div>
+  <div class="transcript-box" style="font-style:italic;">
+    Demonstrated thorough history-taking with attention to family history. Physical
+    examination technique requires improvement — specifically abdominal palpation depth.
+    Clinical reasoning was sound; consider incorporating imaging earlier in workup.
+    Strong patient communication skills noted.
+  </div>
+
+  <!-- Design decision: two clear actions. Edit lets resident fix any
+       LLM misinterpretation. Export generates the form. -->
+  <div class="btn" style="margin-top: 16px;">Edit Assessment</div>
+  <div class="btn primary">Export as PDF</div>
+  <div style="text-align:center; font-size:11px; color:#aaa; margin-top:8px;">
+    PDF formatted as UBC FM Daily T-Res Assessment
+  </div>
+</div>
+
+</body>
+</html>
