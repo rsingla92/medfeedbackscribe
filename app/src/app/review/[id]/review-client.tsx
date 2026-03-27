@@ -610,10 +610,8 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [sessionStatus, setSessionStatus] = useState(session.status);
   const [pollingStep, setPollingStep] = useState(session.pipeline_step ?? null);
 
-  const transcript =
-    session.recording?.transcript_clean ??
-    session.recording?.transcript_raw ??
-    null;
+  // Security: only show PHI-scrubbed transcript. Never expose transcript_raw to client.
+  const transcript = session.recording?.transcript_clean ?? null;
 
   // ── Unsaved changes warning ──────────────────────────────────────────────────
 

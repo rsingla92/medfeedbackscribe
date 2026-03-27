@@ -15,7 +15,6 @@ export interface SessionData {
   form_type: { name: string; extraction_mode: "multi" | "single" };
   recording: {
     transcript_clean: string | null;
-    transcript_raw: string | null;
     audio_url: string | null;
     duration_seconds: number | null;
   } | null;
@@ -51,7 +50,7 @@ export default async function ReviewPage(props: PageProps<"/review/[id]">) {
       preceptor:preceptors(full_name),
       rotation:rotations(name),
       form_type:form_types(name, extraction_mode),
-      recording:recordings(transcript_clean, transcript_raw, audio_url, duration_seconds),
+      recording:recordings(transcript_clean, audio_url, duration_seconds),
       assessments(id, output_index, structured_fields, competency_tags, narrative_summary, coaching_did_well, coaching_consider, llm_confidence)
     `
     )
