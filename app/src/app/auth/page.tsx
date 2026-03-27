@@ -26,8 +26,12 @@ export default function AuthPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const trimmed = email.trim();
-    if (!trimmed) return;
+    // Sync from DOM in case autofill bypassed onChange
+    const input = document.getElementById("email") as HTMLInputElement | null;
+    const emailValue = input?.value || email;
+    const trimmed = emailValue.trim();
+    if (!trimmed || !trimmed.includes("@")) return;
+    setEmail(trimmed);
 
     setState("sending");
     setErrorMessage("");
@@ -57,6 +61,14 @@ export default function AuthPage() {
   function handleResend() {
     setState("idle");
     setEmail("");
+  }
+
+  // Sync email state from DOM — catches mobile autofill that bypasses onChange
+  function syncEmailFromDOM() {
+    const input = document.getElementById("email") as HTMLInputElement | null;
+    if (input && input.value !== email) {
+      setEmail(input.value);
+    }
   }
 
   const isValidEmail = email.trim().length > 0 && email.includes("@");
@@ -147,12 +159,14 @@ export default function AuthPage() {
                 placeholder="you@hospital.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={syncEmailFromDOM}
+                onFocus={syncEmailFromDOM}
                 disabled={state === "sending"}
                 className="w-full rounded-lg border border-border bg-background px-4 py-3 text-base text-foreground placeholder:text-subtle transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!canSubmit}
+                disabled={state === "sending"}
                 className="w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-accent-hover disabled:bg-border disabled:text-muted disabled:cursor-not-allowed"
               >
                 {state === "sending" ? (

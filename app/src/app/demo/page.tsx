@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type DemoStep = "setup" | "consent" | "recording" | "processing" | "review";
+type DemoStep = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "processing" | "review";
 
 const PRECEPTORS = [
   "Dr. Sarah Thompson", "Dr. James Wu", "Dr. Priya Sharma",
@@ -50,7 +50,7 @@ const MOCK_ASSESSMENT = {
 };
 
 export default function DemoPage() {
-  const [step, setStep] = useState<DemoStep>("setup");
+  const [step, setStep] = useState<DemoStep>("pick-rotation");
   const [rotation, setRotation] = useState("");
   const [preceptor, setPreceptor] = useState("");
   const [formType, setFormType] = useState("");
@@ -62,39 +62,20 @@ export default function DemoPage() {
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  // When rotation changes, auto-set form type
-  useEffect(() => {
-    if (rotation === "Emergency Medicine") {
-      setFormType(""); // Force user to pick between two options
-    } else if (rotation !== "") {
-      setFormType("Field Note"); // Only one option, auto-select
-    } else {
-      setFormType("");
-    }
-  }, [rotation]);
-
-  // Recording timer
   useEffect(() => {
     if (isRecording) {
       timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRecording]);
 
-  // Processing simulation
   useEffect(() => {
     if (step === "processing") {
       let i = 0;
       const interval = setInterval(() => {
         i++;
-        if (i < 4) {
-          setProcessingStep(i);
-        } else {
-          clearInterval(interval);
-          setStep("review");
-        }
+        if (i < 4) setProcessingStep(i);
+        else { clearInterval(interval); setStep("review"); }
       }, 1500);
       return () => clearInterval(interval);
     }
@@ -104,8 +85,7 @@ export default function DemoPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/mp4";
+        ? "audio/webm;codecs=opus" : "audio/mp4";
       const recorder = new MediaRecorder(stream, { mimeType });
       chunksRef.current = [];
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
@@ -133,31 +113,28 @@ export default function DemoPage() {
   }
 
   function resetAll() {
-    setStep("setup");
-    setRotation("");
-    setPreceptor("");
-    setFormType("");
-    setElapsed(0);
-    setAudioUrl(null);
+    setStep("pick-rotation");
+    setRotation(""); setPreceptor(""); setFormType("");
+    setElapsed(0); setAudioUrl(null);
   }
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  const processingLabels = [
-    "Uploading audio...",
-    "Transcribing speech to text...",
-    "De-identifying patient information...",
-    "Extracting structured assessment...",
+  const procLabels = [
+    "Uploading audio...", "Transcribing speech to text...",
+    "De-identifying patient information...", "Extracting structured assessment...",
   ];
 
-  const allFieldsFilled = rotation !== "" && preceptor !== "" && formType !== "";
+  // Shared styles
+  const listBtn = "w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light";
+  const primaryBtn = "w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white";
+  const secondaryBtn = "w-full rounded-lg border border-border bg-surface px-4 py-3 text-base font-medium text-foreground";
 
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-6 py-8">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-[family-name:var(--font-display)] text-foreground">MedScribe</h1>
             <p className="text-sm text-muted">Demo Mode</p>
@@ -165,93 +142,83 @@ export default function DemoPage() {
           <span className="rounded-full bg-warning-bg px-3 py-1 text-xs font-medium text-warning">DEMO</span>
         </div>
 
-        {/* ─── SETUP ─── */}
-        {step === "setup" && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (allFieldsFilled) setStep("consent");
-            }}
-            className="space-y-5"
-          >
-            {/* 1. Rotation */}
-            <div>
-              <label htmlFor="rotation" className="mb-1.5 block text-sm font-medium text-foreground">
-                Rotation <span className="text-error">*</span>
-              </label>
-              <select
-                id="rotation"
-                required
-                value={rotation}
-                onChange={(e) => setRotation(e.target.value)}
-                className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-base text-foreground"
-              >
-                <option value="">Select rotation...</option>
-                {ROTATIONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 2. Preceptor — plain select */}
-            <div>
-              <label htmlFor="preceptor" className="mb-1.5 block text-sm font-medium text-foreground">
-                Preceptor <span className="text-error">*</span>
-              </label>
-              <select
-                id="preceptor"
-                required
-                value={preceptor}
-                onChange={(e) => setPreceptor(e.target.value)}
-                className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-base text-foreground"
-              >
-                <option value="">Select preceptor...</option>
-                {PRECEPTORS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 3. Form Type — conditional on rotation */}
-            <div>
-              <label htmlFor="formType" className="mb-1.5 block text-sm font-medium text-foreground">
-                Form Type <span className="text-error">*</span>
-              </label>
-              {rotation === "" ? (
-                <select disabled className="w-full rounded-lg border border-border bg-border-light px-4 py-3 text-base text-subtle">
-                  <option>Select a rotation first</option>
-                </select>
-              ) : rotation === "Emergency Medicine" ? (
-                <select
-                  id="formType"
-                  required
-                  value={formType}
-                  onChange={(e) => setFormType(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-base text-foreground"
+        {/* ─── PICK ROTATION ─── */}
+        {step === "pick-rotation" && (
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">Select Rotation</h2>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {ROTATIONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { setRotation(r); setStep("pick-preceptor"); }}
+                  className={listBtn}
                 >
-                  <option value="">Select form type...</option>
-                  <option value="Field Note">Field Note</option>
-                  <option value="Daily Shift Evaluation">Daily Shift Evaluation</option>
-                </select>
-              ) : (
-                <div className="rounded-lg border border-border bg-surface px-4 py-3 text-base text-foreground">
-                  Field Note
-                </div>
-              )}
+                  {r}
+                </button>
+              ))}
             </div>
+          </div>
+        )}
 
-            {/* Continue */}
-            <button
-              type="submit"
-              className={`w-full rounded-lg px-4 py-3 text-base font-semibold ${
-                allFieldsFilled
-                  ? "bg-accent text-white"
-                  : "bg-border text-muted cursor-default"
-              }`}
-            >
-              Continue
+        {/* ─── PICK PRECEPTOR ─── */}
+        {step === "pick-preceptor" && (
+          <div>
+            <p className="mb-1 text-xs text-subtle">{rotation}</p>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">Select Preceptor</h2>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {PRECEPTORS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    setPreceptor(p);
+                    if (rotation === "Emergency Medicine") {
+                      setStep("pick-form");
+                    } else {
+                      setFormType("Field Note");
+                      setStep("consent");
+                    }
+                  }}
+                  className={listBtn}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setStep("pick-rotation")} className="mt-3 text-sm text-accent">
+              &larr; Back to rotations
             </button>
-          </form>
+          </div>
+        )}
+
+        {/* ─── PICK FORM TYPE (EM only) ─── */}
+        {step === "pick-form" && (
+          <div>
+            <p className="mb-1 text-xs text-subtle">{rotation} &middot; {preceptor}</p>
+            <h2 className="mb-3 text-lg font-semibold text-foreground">Select Form Type</h2>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { setFormType("Field Note"); setStep("consent"); }}
+                className={listBtn}
+              >
+                <span className="font-medium">Field Note</span>
+                <span className="block text-sm text-muted mt-0.5">1-5 field notes per conversation</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setFormType("Daily Shift Evaluation"); setStep("consent"); }}
+                className={listBtn}
+              >
+                <span className="font-medium">Daily Shift Evaluation</span>
+                <span className="block text-sm text-muted mt-0.5">One holistic evaluation per shift</span>
+              </button>
+            </div>
+            <button type="button" onClick={() => setStep("pick-preceptor")} className="mt-3 text-sm text-accent">
+              &larr; Back to preceptors
+            </button>
+          </div>
         )}
 
         {/* ─── CONSENT ─── */}
@@ -267,17 +234,11 @@ export default function DemoPage() {
                 {rotation} &middot; {formType}
               </div>
             </div>
-            <button
-              onClick={() => setStep("recording")}
-              className="w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white"
-            >
+            <button type="button" onClick={() => setStep("recording")} className={primaryBtn}>
               Confirm &amp; Start Recording
             </button>
-            <button
-              onClick={() => setStep("setup")}
-              className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-base font-medium text-foreground"
-            >
-              Go Back
+            <button type="button" onClick={() => setStep("pick-rotation")} className={secondaryBtn}>
+              Start Over
             </button>
           </div>
         )}
@@ -287,10 +248,8 @@ export default function DemoPage() {
           <div className="flex flex-col items-center space-y-6 py-8">
             {!isRecording ? (
               <>
-                <button
-                  onClick={startRecording}
-                  className="flex h-24 w-24 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30"
-                >
+                <button type="button" onClick={startRecording}
+                  className="flex h-24 w-24 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30">
                   <svg className="h-10 w-10" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
                     <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
@@ -305,29 +264,17 @@ export default function DemoPage() {
               <>
                 <div className="flex items-center gap-2">
                   <span className="h-3 w-3 animate-pulse rounded-full bg-error" />
-                  <span className="font-[family-name:var(--font-mono)] text-lg text-foreground">
-                    {formatTime(elapsed)}
-                  </span>
+                  <span className="font-[family-name:var(--font-mono)] text-lg text-foreground">{fmt(elapsed)}</span>
                 </div>
                 <div className="flex items-center gap-1 h-16">
                   {Array.from({ length: 24 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1 rounded-full bg-accent"
-                      style={{
-                        height: `${20 + Math.random() * 80}%`,
-                        animation: `pulse 0.5s ease-in-out ${i * 0.05}s infinite alternate`,
-                      }}
-                    />
+                    <div key={i} className="w-1 rounded-full bg-accent"
+                      style={{ height: `${20 + Math.random() * 80}%`, animation: `pulse 0.5s ease-in-out ${i * 0.05}s infinite alternate` }} />
                   ))}
                 </div>
-                <p className="text-sm text-muted">
-                  Hand your phone to your preceptor — or set it on the desk.
-                </p>
-                <button
-                  onClick={stopRecording}
-                  className="w-full rounded-lg bg-foreground px-4 py-3 text-base font-semibold text-background"
-                >
+                <p className="text-sm text-muted">Hand your phone to your preceptor — or set it on the desk.</p>
+                <button type="button" onClick={stopRecording}
+                  className="w-full rounded-lg bg-foreground px-4 py-3 text-base font-semibold text-background">
                   Stop Recording
                 </button>
               </>
@@ -340,7 +287,7 @@ export default function DemoPage() {
           <div className="flex flex-col items-center space-y-8 py-12">
             <h2 className="text-xl font-[family-name:var(--font-display)] text-foreground">Processing...</h2>
             <div className="w-full space-y-3">
-              {processingLabels.map((label, i) => (
+              {procLabels.map((label, i) => (
                 <div key={i} className="flex items-center gap-3">
                   {processingStep > i ? (
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
@@ -404,9 +351,7 @@ export default function DemoPage() {
                   <div className="rounded-xl border border-border bg-surface divide-y divide-border-light">
                     {Object.entries(output.structured_fields).map(([key, value]) => (
                       <div key={key} className="flex justify-between px-4 py-3">
-                        <span className="text-sm text-muted">
-                          {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                        </span>
+                        <span className="text-sm text-muted">{key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</span>
                         <span className="text-sm font-medium text-foreground text-right max-w-[60%]">
                           {Array.isArray(value) ? value.join(", ") : String(value)}
                         </span>
@@ -429,11 +374,11 @@ export default function DemoPage() {
             ))}
 
             <div className="flex gap-3">
-              <button className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground">Edit</button>
-              <button className="flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white">Export as PDF</button>
+              <button type="button" className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground">Edit</button>
+              <button type="button" className="flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white">Export as PDF</button>
             </div>
 
-            <button onClick={resetAll} className="w-full text-center text-sm font-medium text-accent py-2">
+            <button type="button" onClick={resetAll} className="w-full text-center text-sm font-medium text-accent py-2">
               Start a new session
             </button>
           </div>
