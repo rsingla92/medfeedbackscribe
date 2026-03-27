@@ -280,6 +280,76 @@ Thresholds are calibrated against the evaluation set from the Week 1 prompt engi
 
 You have the design doc. You have the wireframe. Bring both to that meeting. The PD has already said yes in principle — this meeting converts "yes in principle" to "yes, here's the plan."
 
+## UX & Design Specifications (from /plan-design-review)
+
+### Screen Map & Navigation
+
+```
+AUTH (magic link) ──▶ HOME ──▶ RECORD ──▶ upload ──▶ back to HOME
+                      │                              │
+                      ├── History tab                 └── toast when ready
+                      │   (session cards,                 │
+                      │    status badges)                  ▼
+                      │        │                     REVIEW (tap from
+                      ├── Settings tab               History or toast)
+                      │                                    │
+                      └── Metrics (admin)                  ▼
+                                                     EXPORT (PDF)
+```
+
+### Post-Upload Flow
+Resident uploads recording → returns to Home screen. Toast notification appears at bottom when processing completes: "Your assessment is ready — tap to review." Session appears in History tab with status badge.
+
+### Session Card (History Tab)
+Compact card, one line per field. Left-aligned text. Status badge (colored dot + label) in top-right:
+- Orange dot: "Processing"
+- Green dot: "Ready"
+- Gray dot: "Exported"
+
+Tap entire card to navigate to review screen. List sorted by date (newest first).
+
+### Audio Player (Review Screen)
+Sticky bottom bar, fixed at bottom of review screen. Play/pause button, scrub bar, timestamp. Always accessible while scrolling through transcript and structured fields. Like a podcast player.
+
+### Toast Notifications
+Bottom-center, dark background (#1a1a1a), white text, rounded corners (8px). 5-second auto-dismiss. "View" action button on right side. Used for: processing complete, export success, upload status.
+
+### Interaction State Table
+
+| Feature | Loading | Empty | Error | Success | Partial |
+|---------|---------|-------|-------|---------|---------|
+| Home / History | Skeleton cards | "No feedback yet. Record your first session →" [Big record btn] | "Couldn't load sessions. Pull to refresh." | Session cards with status badges | — |
+| Recording | Mic permission request | — | "Microphone access denied. Check Settings." | Waveform + timer | — |
+| Upload | "Uploading..." progress | — | "Upload failed. Tap to retry." | Toast: "Uploaded! Processing..." | Offline: "Saved locally — will upload when connected" |
+| Processing | Badge: "Processing" | — | "Processing failed — tap to retry." | Toast: "Your assessment is ready!" | — |
+| Review | Skeleton layout | — | "Couldn't load assessment." | Transcript + fields + audio player | Low-confidence fields highlighted yellow |
+| PDF Export | "Generating PDF..." | — | "PDF failed. Data is saved." | Download triggered | — |
+| Metrics | Skeleton | "No pilot data yet. Waiting for first session." | "Couldn't load metrics." | Stats cards | — |
+| Auth | "Sending link..." | — | "Email not found. Contact admin." | "Check your inbox!" | Link expired: "Link expired. Resend?" |
+
+### User Journey Emotional Arc
+1. First open → skeptical → empty state with clear first action eases anxiety
+2. Create session → slightly anxious → simple dropdown form (not free text)
+3. Consent + record → committed → big button, minimal UI, waveform gives confidence
+4. Stop + upload → anticipation → back to home, free to see next patient
+5. Toast: "Ready!" → excitement → one tap to review
+6. Review assessment → validation → "This is what I actually did!"
+7. Export PDF → accomplishment → "My record reflects reality"
+8. Repeat user: progress count after export ("4 assessments captured this rotation")
+
+### Accessibility (Pilot Minimum)
+- Touch targets: 44px minimum (record button, form fields, cards, action buttons)
+- Color contrast: 4.5:1 for all text (WCAG AA)
+- ARIA labels: record button, status badges, form fields, audio player controls
+- Focus order: logical tab sequence through all interactive elements
+
+### Responsive
+- **Mobile (375-428px):** Primary design. Single column. Wireframe layout.
+- **Tablet/Desktop:** Metrics page uses wider layout with stats in a row. Review screen shows transcript and structured fields side-by-side instead of stacked. All other screens stay single-column (content doesn't benefit from wider layout).
+
+### Design System
+No DESIGN.md yet. Run `/design-consultation` before implementation to establish: typography, color palette, spacing scale, and component vocabulary. Until then, avoid default font stacks (Inter, Roboto, system) and blue-accent defaults.
+
 ## Reviewer Concerns
 
 The following issues were flagged across 3 rounds of adversarial review and are not yet resolved. None are blockers for pilot development.
