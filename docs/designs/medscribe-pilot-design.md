@@ -210,7 +210,46 @@ The Twilio phone channel is **deferred to post-pilot.** The consent flow for a p
 
 ## Form Template Engine
 
-Form templates are JSON schemas defining field names, field types (rating scale, free text, checkbox), competency mappings (CanMEDS roles), and rating scale labels. For the pilot, templates are manually authored by the developer from the actual UBC FM T-Res form. The LLM extraction prompt is parameterized by the template — it receives the field definitions and outputs structured JSON matching that schema. Post-pilot, a PD-facing template editor is planned so new programs can define their own forms without developer involvement.
+Form templates are JSON schemas defining field names, field types (rating scale, free text, checkbox), competency mappings (CanMEDS roles), and rating scale labels. For the pilot, templates are manually authored by the developer from the actual UBC FM T-Res and One45 forms. The LLM extraction prompt is parameterized by the template — it receives the field definitions and outputs structured JSON matching that schema. Post-pilot, a PD-facing template editor is planned so new programs can define their own forms without developer involvement.
+
+### Extraction Modes
+
+The template engine supports two extraction modes depending on the form type:
+
+**Mode 1: Multi-output (T-Res Field Notes)**
+One conversation generates MULTIPLE field notes (1-5), each capturing a distinct observed activity. The LLM detects topic shifts and distinct patient encounters in the transcript and generates separate field notes for each. Signals for splitting: explicit patient transitions ("and then with your next patient..."), distinct skill areas discussed, and transcript length (longer debriefs → more field notes). Maximum 5 field notes per conversation.
+
+Each field note contains:
+- Activity type (Field Note)
+- Coaching: "Something you did well..." / "Consider next time you might..."
+- Tags: Skill Dimension (CanMEDS), Priority Topics, Domain of Care
+- Preceptor endorsement
+
+**Mode 2: Single-output (One45 Daily Evaluation)**
+One conversation generates ONE holistic evaluation form. All feedback is synthesized into a single assessment with ratings across CanMEDS sub-skills (or role-level binary ratings), plus narrative strengths/needs improvement.
+
+### Form Types (Pilot)
+
+| Form | Platform | Mode | Rating Scale | Fields |
+|------|----------|------|-------------|--------|
+| Field Note | T-Res | Multi (1-5) | N/A (narrative + tags) | Coaching notes, Skill Dimension, Priority Topics, Domain of Care |
+| Daily Evaluation | One45 (EM) | Single | 5-point Likert (Rarely Meets → Consistently Exceeds) | CanMEDS sub-skills + Strengths/Needs Improvement |
+| Mid-Rotation ITAR | One45 | NOT a direct target — MedScribe feeds data to rotation leads who fill this | Binary (Concerns/On target) per CanMEDS role + comments | Filled by rotation leads, not residents |
+
+### Competency Framework (UBC Family Medicine)
+
+Extracted from UBC FM Domains of Care document. 8 domains with core activities:
+- Family Medicine Fundamentals
+- Health Equity and Care of Community
+- Maternity and Newborn Care
+- Care of Children and Adolescents
+- Care of Adults
+- Care of the Elderly
+- Palliative and End of Life Care
+- Mental Health and Addictions Care
+- Surgical and Procedural Skills
+
+These map to T-Res "Domain of Care" tags. The LLM extraction prompt uses this vocabulary as the controlled list for tagging.
 
 ## LLM Confidence Scoring
 
