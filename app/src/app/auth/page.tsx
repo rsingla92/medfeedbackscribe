@@ -153,7 +153,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-accent-hover disabled:bg-border disabled:text-muted disabled:cursor-not-allowed"
               >
                 {state === "sending" ? (
                   <span className="inline-flex items-center gap-2">
