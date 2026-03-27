@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* MedScribe Design System — from DESIGN.md */
+
+:root {
+  /* Accent */
+  --accent: #D97706;
+  --accent-light: #FEF3C7;
+  --accent-hover: #B45309;
+
+  /* Surfaces */
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+
+  /* Text */
+  --text: #1C1917;
+  --text-muted: #78716C;
+  --text-subtle: #A8A29E;
+
+  /* Borders */
+  --border: #E7E5E4;
+  --border-light: #F5F5F4;
+
+  /* Semantic */
+  --success: #16A34A;
+  --success-bg: #F0FDF4;
+  --warning: #D97706;
+  --warning-bg: #FFFBEB;
+  --error: #DC2626;
+  --error-bg: #FEF2F2;
+  --info: #2563EB;
+  --info-bg: #EFF6FF;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+}
+
+[data-theme="dark"] {
+  --bg: #1C1917;
+  --surface: #292524;
+  --text: #FAFAF9;
+  --text-muted: #A8A29E;
+  --text-subtle: #78716C;
+  --border: #44403C;
+  --border-light: #292524;
+  --accent-light: #451A03;
+  --success-bg: #052E16;
+  --warning-bg: #451A03;
+  --error-bg: #450A0A;
+  --info-bg: #1E3A5F;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-accent-hover: var(--accent-hover);
+  --color-surface: var(--surface);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "SF Mono", "Fira Code", monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Touch target minimum: 44px */
+button, a, input, select, textarea {
+  min-height: 44px;
+}
+
+/* Focus ring using accent */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-light), 0 0 0 1px var(--accent);
+}

@@ -1,0 +1,16 @@
+{
+  "name": "MedScribe",
+  "short_name": "MedScribe",
+  "description": "Capture feedback. Skip the forms.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAF9",
+  "theme_color": "#D97706",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
