@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedScribe — Design System Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #D97706;
+    --accent-light: #FEF3C7;
+    --accent-hover: #B45309;
+    --bg: #FAFAF9;
+    --surface: #FFFFFF;
+    --text: #1C1917;
+    --text-muted: #78716C;
+    --text-subtle: #A8A29E;
+    --border: #E7E5E4;
+    --border-light: #F5F5F4;
+    --success: #16A34A;
+    --success-bg: #F0FDF4;
+    --warning: #D97706;
+    --warning-bg: #FFFBEB;
+    --error: #DC2626;
+    --error-bg: #FEF2F2;
+    --info: #2563EB;
+    --info-bg: #EFF6FF;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #1C1917;
+    --surface: #292524;
+    --text: #FAFAF9;
+    --text-muted: #A8A29E;
+    --text-subtle: #78716C;
+    --border: #44403C;
+    --border-light: #292524;
+    --accent-light: #451A03;
+    --success-bg: #052E16;
+    --warning-bg: #451A03;
+    --error-bg: #450A0A;
+    --info-bg: #1E3A5F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    transition: background 0.3s, color 0.3s;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 48px 24px; }
+
+  /* Theme toggle */
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 100;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-full); padding: 8px 16px;
+    font-family: var(--font-body); font-size: 13px; color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Sections */
+  .section { margin-bottom: 64px; }
+  .section-label {
+    font-family: var(--font-body);
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--text-subtle);
+    margin-bottom: 16px;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+
+  /* Typography specimens */
+  .display-xl {
+    font-family: var(--font-display);
+    font-size: 48px; line-height: 1.1;
+    color: var(--text); margin-bottom: 8px;
+  }
+  .display-lg {
+    font-family: var(--font-display);
+    font-size: 36px; line-height: 1.2;
+    color: var(--text);
+  }
+  .display-md {
+    font-family: var(--font-display);
+    font-size: 24px; line-height: 1.3;
+    color: var(--text);
+  }
+  .body-lg { font-size: 18px; color: var(--text); max-width: 600px; }
+  .body-md { font-size: 15px; color: var(--text); max-width: 600px; }
+  .body-sm { font-size: 13px; color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+
+  .font-label {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle);
+    margin-bottom: 4px;
+  }
+  .specimen { margin-bottom: 32px; }
+
+  /* Color swatches */
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .swatch {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); overflow: hidden;
+  }
+  .swatch-color { height: 64px; }
+  .swatch-info { padding: 8px 12px; }
+  .swatch-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .swatch-hex { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+  /* UI Components */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-body); font-size: 14px; font-weight: 500;
+    padding: 10px 20px; border-radius: var(--radius-md); border: none;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-ghost { background: transparent; color: var(--accent); }
+  .btn-ghost:hover { background: var(--accent-light); }
+
+  .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px;
+  }
+  .card + .card { margin-top: 12px; }
+
+  /* Session card mockup */
+  .session-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px 20px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .session-card + .session-card { margin-top: 8px; }
+  .session-meta h3 { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+  .session-meta p { font-size: 13px; color: var(--text-muted); }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; padding: 4px 10px;
+    border-radius: var(--radius-full);
+  }
+  .status-ready { background: #F0FDF4; color: #16A34A; }
+  .status-processing { background: #FFFBEB; color: #D97706; }
+  .status-exported { background: var(--border-light); color: var(--text-muted); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Form inputs */
+  .input-group { margin-bottom: 16px; }
+  .input-label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .input {
+    width: 100%; padding: 10px 14px; font-family: var(--font-body); font-size: 14px;
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    background: var(--surface); color: var(--text);
+    transition: border-color 0.15s;
+  }
+  .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+  .input::placeholder { color: var(--text-subtle); }
+
+  /* Alerts */
+  .alert { padding: 12px 16px; border-radius: var(--radius-md); font-size: 14px; margin-bottom: 8px; }
+  .alert-success { background: var(--success-bg); color: var(--success); }
+  .alert-warning { background: var(--warning-bg); color: var(--warning); }
+  .alert-error { background: var(--error-bg); color: var(--error); }
+  .alert-info { background: var(--info-bg); color: var(--info); }
+
+  /* Record button mockup */
+  .record-section { text-align: center; padding: 40px 0; }
+  .record-btn {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: var(--accent); border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 24px rgba(217, 119, 6, 0.3);
+  }
+  .record-btn:hover { transform: scale(1.05); box-shadow: 0 6px 32px rgba(217, 119, 6, 0.4); }
+  .record-btn svg { width: 32px; height: 32px; fill: white; }
+  .record-label { font-size: 14px; color: var(--text-muted); margin-top: 12px; }
+
+  /* Assessment preview */
+  .assessment-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border-light);
+    font-size: 14px;
+  }
+  .assessment-row:last-child { border-bottom: none; }
+  .assessment-label { color: var(--text-muted); }
+  .assessment-value { font-weight: 500; }
+  .assessment-value.low-conf { color: var(--warning); background: var(--warning-bg); padding: 2px 8px; border-radius: var(--radius-sm); }
+
+  /* Audio player bar */
+  .audio-bar {
+    position: relative; background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; gap: 16px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .play-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .play-btn svg { width: 14px; height: 14px; fill: white; margin-left: 2px; }
+  .scrub-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; position: relative; }
+  .scrub-progress { width: 35%; height: 100%; background: var(--accent); border-radius: 2px; }
+  .time-label { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+  /* Phone frame for mockup */
+  .phone-frame {
+    max-width: 375px; margin: 0 auto;
+    border: 2px solid var(--border); border-radius: 24px;
+    background: var(--bg); overflow: hidden;
+  }
+  .phone-status { padding: 8px 20px; font-size: 12px; color: var(--text-muted); text-align: center; }
+  .phone-content { padding: 0 16px 20px; }
+
+  /* Metrics stat */
+  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .stat-value { font-family: var(--font-display); font-size: 32px; color: var(--text); }
+  .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()">Light / Dark</button>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="section">
+    <p class="section-label">Design System Preview</p>
+    <h1 class="display-xl">MedScribe</h1>
+    <p class="body-lg" style="color: var(--text-muted); margin-top: 8px;">
+      Capture feedback. Skip the forms.
+    </p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Typography -->
+  <div class="section">
+    <p class="section-label">Typography</p>
+
+    <div class="specimen">
+      <p class="font-label">Instrument Serif — Display / Headlines</p>
+      <p class="display-xl">Review Assessment</p>
+      <p class="display-lg">Dr. Chang → You</p>
+      <p class="display-md">General Surgery — Week 1</p>
+    </div>
+
+    <div class="specimen">
+      <p class="font-label">DM Sans — Body / UI</p>
+      <p class="body-lg">Your history was thorough — you caught the family history of colon cancer which was important for this patient. Your physical exam technique needs work, especially abdominal palpation.</p>
+      <p class="body-md" style="margin-top: 12px; color: var(--text-muted);">Demonstrated thorough history-taking with attention to family history. Physical examination technique requires improvement.</p>
+    </div>
+
+    <div class="specimen">
+      <p class="font-label">Geist Mono — Data / Timestamps</p>
+      <p class="mono">Session #2847 · 2026-03-25 · 2:34 duration · confidence: 0.82</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Colors -->
+  <div class="section">
+    <p class="section-label">Color Palette</p>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="swatch-color" style="background: #D97706;"></div>
+        <div class="swatch-info"><p class="swatch-name">Accent</p><p class="swatch-hex">#D97706</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #FAFAF9;"></div>
+        <div class="swatch-info"><p class="swatch-name">Background</p><p class="swatch-hex">#FAFAF9</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #1C1917;"></div>
+        <div class="swatch-info"><p class="swatch-name">Text</p><p class="swatch-hex">#1C1917</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #78716C;"></div>
+        <div class="swatch-info"><p class="swatch-name">Muted</p><p class="swatch-hex">#78716C</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #16A34A;"></div>
+        <div class="swatch-info"><p class="swatch-name">Success</p><p class="swatch-hex">#16A34A</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #DC2626;"></div>
+        <div class="swatch-info"><p class="swatch-name">Error</p><p class="swatch-hex">#DC2626</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #2563EB;"></div>
+        <div class="swatch-info"><p class="swatch-name">Info</p><p class="swatch-hex">#2563EB</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #E7E5E4;"></div>
+        <div class="swatch-info"><p class="swatch-name">Border</p><p class="swatch-hex">#E7E5E4</p></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- UI Components -->
+  <div class="section">
+    <p class="section-label">UI Components</p>
+
+    <p class="font-label" style="margin-bottom: 12px;">Buttons</p>
+    <div class="btn-group" style="margin-bottom: 32px;">
+      <button class="btn btn-primary">Export as PDF</button>
+      <button class="btn btn-secondary">Edit Assessment</button>
+      <button class="btn btn-ghost">Discard</button>
+    </div>
+
+    <p class="font-label" style="margin-bottom: 12px;">Form Inputs</p>
+    <div style="max-width: 400px; margin-bottom: 32px;">
+      <div class="input-group">
+        <label class="input-label">Preceptor</label>
+        <input class="input" value="Dr. George Chang" readonly>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Rotation</label>
+        <input class="input" placeholder="Select rotation..." readonly>
+      </div>
+    </div>
+
+    <p class="font-label" style="margin-bottom: 12px;">Alerts</p>
+    <div style="max-width: 500px;">
+      <div class="alert alert-success">Your assessment is ready — tap to review.</div>
+      <div class="alert alert-warning">Audio quality low — results may be less accurate.</div>
+      <div class="alert alert-error">Processing failed — tap to retry.</div>
+      <div class="alert alert-info">Saved locally — will upload when connected.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Mockup: Home Screen -->
+  <div class="section">
+    <p class="section-label">Mockup — Home Screen</p>
+    <div class="phone-frame">
+      <div class="phone-status">9:41 AM · UBC Family Medicine</div>
+      <div class="phone-content">
+        <h2 class="display-md" style="margin-bottom: 4px;">MedScribe</h2>
+        <p class="body-sm" style="margin-bottom: 20px;">Capture feedback. Skip the forms.</p>
+
+        <div class="record-section">
+          <button class="record-btn">
+            <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+          <p class="record-label">Tap to record feedback</p>
+        </div>
+
+        <p class="section-label">Recent Sessions</p>
+        <div class="session-card">
+          <div class="session-meta">
+            <h3>Dr. Chang</h3>
+            <p>General Surgery · Mar 24</p>
+          </div>
+          <span class="status-badge status-ready"><span class="status-dot"></span> Ready</span>
+        </div>
+        <div class="session-card">
+          <div class="session-meta">
+            <h3>Dr. Naryan</h3>
+            <p>Family Med Clinic · Mar 23</p>
+          </div>
+          <span class="status-badge status-exported"><span class="status-dot"></span> Exported</span>
+        </div>
+        <div class="session-card">
+          <div class="session-meta">
+            <h3>Dr. Robitaille</h3>
+            <p>Emergency · Mar 22</p>
+          </div>
+          <span class="status-badge status-processing"><span class="status-dot"></span> Processing</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Mockup: Review Screen -->
+  <div class="section">
+    <p class="section-label">Mockup — Review Screen</p>
+    <div class="phone-frame">
+      <div class="phone-status">9:45 AM · Review</div>
+      <div class="phone-content">
+        <h2 class="display-md" style="margin-bottom: 2px;">Review Assessment</h2>
+        <p class="body-sm" style="margin-bottom: 20px;">Dr. Chang → You · General Surgery · Mar 24</p>
+
+        <p class="section-label">Transcript</p>
+        <div class="card" style="margin-bottom: 20px;">
+          <p class="body-md" style="font-style: italic; color: var(--text-muted);">
+            "Overall you did a good job today. Your history was thorough — you caught the family history of colon cancer which was important for this patient. Your physical exam technique needs work, especially abdominal palpation."
+          </p>
+        </div>
+
+        <p class="section-label">Assessment</p>
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="assessment-row">
+            <span class="assessment-label">History Taking</span>
+            <span class="assessment-value">Meets expectations</span>
+          </div>
+          <div class="assessment-row">
+            <span class="assessment-label">Physical Exam</span>
+            <span class="assessment-value low-conf">Below expectations</span>
+          </div>
+          <div class="assessment-row">
+            <span class="assessment-label">Clinical Reasoning</span>
+            <span class="assessment-value">Meets expectations</span>
+          </div>
+          <div class="assessment-row">
+            <span class="assessment-label">Communication</span>
+            <span class="assessment-value">Above expectations</span>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" style="flex:1;">Edit</button>
+          <button class="btn btn-primary" style="flex:1;">Export PDF</button>
+        </div>
+      </div>
+
+      <!-- Sticky audio player -->
+      <div class="audio-bar">
+        <button class="play-btn">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <div class="scrub-bar"><div class="scrub-progress"></div></div>
+        <span class="time-label">0:53 / 2:34</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Mockup: Metrics -->
+  <div class="section">
+    <p class="section-label">Mockup — Pilot Metrics</p>
+    <div style="max-width: 500px;">
+      <h2 class="display-md" style="margin-bottom: 16px;">Pilot Metrics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <p class="stat-value">47</p>
+          <p class="stat-label">Sessions recorded</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-value">82%</p>
+          <p class="stat-label">Completion rate</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-value">8</p>
+          <p class="stat-label">Unique preceptors</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-value">2.1h</p>
+          <p class="stat-label">Avg. turnaround</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === 'dark' ? '' : 'dark';
+}
+</script>
+</body>
+</html>
