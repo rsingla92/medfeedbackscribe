@@ -1,0 +1,100 @@
+{
+  "name": "T-Res Field Note",
+  "program": "UBC Family Medicine",
+  "specialty": "Family Medicine",
+  "extraction_mode": "multi",
+  "max_outputs": 5,
+  "competency_framework": "CanMEDS",
+  "fields": {
+    "activity_type": {
+      "type": "select",
+      "label": "Activity Type",
+      "options": ["Field Note"],
+      "default": "Field Note"
+    },
+    "observation_type": {
+      "type": "select",
+      "label": "Observation Type",
+      "options": ["Activity Observed", "Direct Observation"]
+    },
+    "coaching_did_well": {
+      "type": "text",
+      "label": "Describe something you did well...",
+      "max_length": 2048
+    },
+    "coaching_consider": {
+      "type": "text",
+      "label": "Consider (Next time you might...)",
+      "max_length": 2048
+    },
+    "skill_dimension": {
+      "type": "multi_select",
+      "label": "Skill Dimension",
+      "options": [
+        "Clinical Reasoning/Skills",
+        "Communication",
+        "Collaboration",
+        "Leadership/Management",
+        "Health Advocacy",
+        "Scholarship",
+        "Professionalism"
+      ]
+    },
+    "priority_topics": {
+      "type": "multi_select",
+      "label": "Priority Topics",
+      "options": [
+        "Abdominal Pain",
+        "Anxiety/Depression",
+        "Back Pain",
+        "Breast Lump",
+        "Chest Pain",
+        "Child Behaviour",
+        "Chronic Disease Management",
+        "Contraception/STI",
+        "Cough/Dyspnea",
+        "Dermatology",
+        "Diabetes",
+        "Dizziness",
+        "Domestic Violence",
+        "Drug Prescribing/Interaction",
+        "Dyspepsia",
+        "Fatigue",
+        "Fever",
+        "Fracture/Dislocation",
+        "Headache",
+        "Hypertension",
+        "Joint Pain",
+        "Laceration/Wound",
+        "Menstrual Disorders",
+        "Mental Health",
+        "Newborn Care",
+        "Pain Management",
+        "Palliative Care",
+        "Pregnancy",
+        "Preventive Care",
+        "Rash",
+        "Smoking Cessation",
+        "Substance Abuse",
+        "Urinary Symptoms",
+        "Well Child Visit",
+        "Other"
+      ]
+    },
+    "domain_of_care": {
+      "type": "select",
+      "label": "Domain of Care",
+      "options": [
+        "Family Medicine Fundamentals",
+        "Health Equity and Care of Community",
+        "Maternity and Newborn Care",
+        "Care of Children and Adolescents",
+        "Care of Adults",
+        "Care of the Elderly",
+        "Palliative and End of Life Care",
+        "Mental Health and Addictions Care",
+        "Surgical and Procedural Skills"
+      ]
+    }
+  }
+}

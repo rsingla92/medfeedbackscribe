@@ -1,0 +1,107 @@
+{
+  "name": "One45 Daily Evaluation (Emergency Medicine)",
+  "program": "UBC Emergency Medicine",
+  "specialty": "Emergency Medicine",
+  "extraction_mode": "single",
+  "max_outputs": 1,
+  "competency_framework": "CanMEDS",
+  "fields": {
+    "medical_expert": {
+      "type": "rating_group",
+      "label": "Medical Expert",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Clinical Assessments (Hx & Px Investigations)",
+        "Patient Management/Resuscitation Skills",
+        "Procedures",
+        "Judgment/Decision-Making"
+      ]
+    },
+    "communicator": {
+      "type": "rating_group",
+      "label": "Communication",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Communication with Patients & Families",
+        "Team Work/Conflict Resolution",
+        "Documentation/Teaching"
+      ]
+    },
+    "collaborator": {
+      "type": "rating_group",
+      "label": "Collaborator",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Team Relationships",
+        "Use of Consultants"
+      ]
+    },
+    "manager": {
+      "type": "rating_group",
+      "label": "Manager",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Utilization of Resources",
+        "Departmental Management"
+      ]
+    },
+    "advocate": {
+      "type": "rating_group",
+      "label": "Advocate",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Patients/Profession"
+      ]
+    },
+    "scholar": {
+      "type": "rating_group",
+      "label": "Scholar",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Basic Sciences",
+        "Evidence-Based Medicine",
+        "Teaching Skills"
+      ]
+    },
+    "professional": {
+      "type": "rating_group",
+      "label": "Professional",
+      "scale": {
+        "type": "likert_5",
+        "labels": ["Rarely Meets", "Inconsistently Meets", "Generally Meets", "Sometimes Exceeds", "Consistently Exceeds"]
+      },
+      "items": [
+        "Compassionate Care",
+        "Personal Behaviour"
+      ]
+    },
+    "strengths": {
+      "type": "text",
+      "label": "Strengths",
+      "max_length": 2048
+    },
+    "needs_improvement": {
+      "type": "text",
+      "label": "Needs Improvement",
+      "max_length": 2048
+    }
+  }
+}
