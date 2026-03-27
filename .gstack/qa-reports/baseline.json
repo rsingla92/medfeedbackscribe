@@ -1,0 +1,22 @@
+{
+  "date": "2026-03-27",
+  "url": "http://localhost:3000",
+  "healthScore": 94,
+  "issues": [
+    { "id": "ISSUE-001", "title": "Protected routes don't redirect", "severity": "HIGH", "category": "Functional", "status": "fixed" },
+    { "id": "ISSUE-002", "title": "Auth button disabled state invisible", "severity": "MEDIUM", "category": "Visual", "status": "fixed" },
+    { "id": "ISSUE-003", "title": "Demo select dropdowns broken on mobile", "severity": "CRITICAL", "category": "Functional", "status": "fixed" },
+    { "id": "ISSUE-004", "title": "Raw transcript PHI exposed to client", "severity": "HIGH", "category": "Security", "status": "fixed" },
+    { "id": "ISSUE-005", "title": "Supabase email rate limit 2/hour", "severity": "MEDIUM", "category": "Functional", "status": "deferred" }
+  ],
+  "categoryScores": {
+    "console": 100,
+    "links": 100,
+    "visual": 95,
+    "functional": 90,
+    "ux": 90,
+    "performance": 100,
+    "content": 100,
+    "accessibility": 85
+  }
+}

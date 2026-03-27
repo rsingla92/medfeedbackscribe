@@ -1,4 +1,8 @@
 .gstack/
+!.gstack/qa-reports/
+!.gstack/qa-reports/**
+!.gstack/security-reports/
+!.gstack/security-reports/**
 node_modules/
 .env
 .env.local
