@@ -6,13 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 type AuthState = "idle" | "sending" | "sent" | "expired" | "error";
 
 export default function AuthPage() {
-  const [email, setEmail] = useState("");
   const [state, setState] = useState<AuthState>("idle");
+  const [sentEmail, setSentEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const supabase = createClient();
 
-  // Check for expired link via URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (
@@ -26,18 +25,17 @@ export default function AuthPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Sync from DOM in case autofill bypassed onChange
-    const input = document.getElementById("email") as HTMLInputElement | null;
-    const emailValue = input?.value || email;
-    const trimmed = emailValue.trim();
-    if (!trimmed || !trimmed.includes("@")) return;
-    setEmail(trimmed);
+    // Always read directly from the DOM — never rely on React state for mobile
+    const input = (e.target as HTMLFormElement).querySelector("input[type=email]") as HTMLInputElement;
+    const email = input?.value?.trim() || "";
+    if (!email || !email.includes("@")) return;
 
     setState("sending");
+    setSentEmail(email);
     setErrorMessage("");
 
     const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
+      email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -58,36 +56,16 @@ export default function AuthPage() {
     }
   }
 
-  function handleResend() {
-    setState("idle");
-    setEmail("");
-  }
-
-  // Sync email state from DOM — catches mobile autofill that bypasses onChange
-  function syncEmailFromDOM() {
-    const input = document.getElementById("email") as HTMLInputElement | null;
-    if (input && input.value !== email) {
-      setEmail(input.value);
-    }
-  }
-
-  const isValidEmail = email.trim().length > 0 && email.includes("@");
-  const canSubmit = isValidEmail && state !== "sending";
-
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm space-y-8 text-center">
         {/* Branding */}
         <div className="space-y-2">
-          <h1 className="text-4xl font-[family-name:var(--font-display)] text-foreground">
-            MedScribe
-          </h1>
-          <p className="text-muted text-base">
-            Capture feedback. Skip the forms.
-          </p>
+          <h1 className="text-4xl font-[family-name:var(--font-display)] text-foreground">MedScribe</h1>
+          <p className="text-muted text-base">Capture feedback. Skip the forms.</p>
         </div>
 
-        {/* Sent state */}
+        {/* Sent */}
         {state === "sent" && (
           <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-bg">
@@ -98,18 +76,16 @@ export default function AuthPage() {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">Check your inbox!</h2>
               <p className="text-sm text-muted">
-                We sent a magic link to{" "}
-                <span className="font-medium text-foreground">{email}</span>.
-                Click the link to sign in.
+                We sent a magic link to <span className="font-medium text-foreground">{sentEmail}</span>. Click the link to sign in.
               </p>
             </div>
-            <button type="button" onClick={handleResend} className="text-sm font-medium text-accent hover:text-accent-hover transition-colors min-h-11">
+            <button type="button" onClick={() => setState("idle")} className="text-sm font-medium text-accent">
               Didn&apos;t receive it? Try again
             </button>
           </div>
         )}
 
-        {/* Expired state */}
+        {/* Expired */}
         {state === "expired" && (
           <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warning-bg">
@@ -121,13 +97,13 @@ export default function AuthPage() {
               <h2 className="text-lg font-semibold text-foreground">Link expired</h2>
               <p className="text-sm text-muted">Magic links are valid for a limited time. Request a new one below.</p>
             </div>
-            <button type="button" onClick={handleResend} className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
+            <button type="button" onClick={() => setState("idle")} className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white">
               Resend magic link
             </button>
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error */}
         {state === "error" && (
           <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-error-bg">
@@ -139,7 +115,7 @@ export default function AuthPage() {
               <h2 className="text-lg font-semibold text-foreground">Something went wrong</h2>
               <p className="text-sm text-muted">{errorMessage}</p>
             </div>
-            <button type="button" onClick={handleResend} className="text-sm font-medium text-accent hover:text-accent-hover transition-colors min-h-11">
+            <button type="button" onClick={() => setState("idle")} className="text-sm font-medium text-accent">
               Try again
             </button>
           </div>
@@ -152,34 +128,21 @@ export default function AuthPage() {
               <label htmlFor="email" className="sr-only">Email address</label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 required
                 autoComplete="email"
                 autoFocus
                 placeholder="you@hospital.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={syncEmailFromDOM}
-                onFocus={syncEmailFromDOM}
                 disabled={state === "sending"}
-                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-base text-foreground placeholder:text-subtle transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light disabled:opacity-50"
+                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-base text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={state === "sending"}
-                className="w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-accent-hover disabled:bg-border disabled:text-muted disabled:cursor-not-allowed"
+                className="w-full rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white disabled:bg-border disabled:text-muted"
               >
-                {state === "sending" ? (
-                  <span className="inline-flex items-center gap-2">
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Sending...
-                  </span>
-                ) : (
-                  "Send magic link"
-                )}
+                {state === "sending" ? "Sending..." : "Send magic link"}
               </button>
             </div>
           </form>
