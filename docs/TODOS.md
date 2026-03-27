@@ -44,3 +44,33 @@
 **Effort:** S with CC (investigation) → M if native wrapper needed
 **Priority:** P3
 **Depends on:** Pilot user feedback on device/browser distribution
+
+## Bias Detection in Feedback
+
+**What:** Flag potentially biased language in preceptor feedback (gendered language, loaded terms, culturally-insensitive phrasing). Surface bias flags to PDs in aggregate analytics.
+
+**Why:** Medical education literature documents bias in trainee assessment. Detecting it programmatically is a differentiator and aligns with EDI initiatives at Canadian medical schools. Original specifications.md included this as a core feature.
+
+**Pros:** Unique feature no competitor offers. Aligns with institutional EDI priorities. Could be a selling point for PDs.
+**Cons:** Bias detection is hard to get right. False positives erode trust. Requires careful calibration and potentially a review/appeal workflow. Sensitive topic — needs buy-in from program leadership.
+
+**Context:** Deferred from pilot. Build after core feedback capture is validated and there's enough data to calibrate detection thresholds. The LLM extraction pipeline already processes the transcript — adding a bias analysis pass is architecturally cheap. The hard part is the UX: how to surface findings without creating defensiveness in preceptors.
+
+**Effort:** M (human) → S with CC (~2-3 hours for detection; M for review/appeal UX)
+**Priority:** P3
+**Depends on:** Validated pilot adoption, PD buy-in on EDI integration
+
+## Stripe Subscription / Payment
+
+**What:** Add Stripe-based payment for program-level subscriptions. Per-program or per-resident SaaS pricing.
+
+**Why:** The pilot is free (direct invoicing to UBC FM PD). For multi-program / multi-school expansion, need self-serve payment. Original specifications.md included Stripe integration.
+
+**Pros:** Enables scalable revenue. Self-serve onboarding for new programs without manual invoicing.
+**Cons:** Adds billing complexity. Healthcare procurement often prefers purchase orders / invoicing over credit card billing. May need both Stripe AND manual invoicing.
+
+**Context:** For pilot: free. For post-pilot UBC-wide: direct invoice to the program. Stripe makes sense only when expanding beyond UBC to other schools where you don't have a direct PD relationship. Build when there are 3+ paying programs.
+
+**Effort:** M (human) → S with CC
+**Priority:** P3
+**Depends on:** Multi-program expansion beyond UBC FM
