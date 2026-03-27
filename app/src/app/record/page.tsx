@@ -23,7 +23,7 @@ interface FormType {
   extraction_mode: "multi" | "single";
 }
 
-type Step = "setup" | "consent" | "recording" | "uploading";
+type Step = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "uploading";
 
 // ── Waveform Visualization ─────────────────────────────────────────────────────
 
@@ -198,7 +198,7 @@ export default function RecordPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Flow state
-  const [step, setStep] = useState<Step>("setup");
+  const [step, setStep] = useState<Step>("pick-rotation");
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -341,7 +341,7 @@ export default function RecordPage() {
     if (!navigator.onLine) {
       setOfflineBlob(blob);
       setIsOffline(true);
-      setStep("setup");
+      setStep("pick-rotation");
       return;
     }
 
@@ -421,7 +421,7 @@ export default function RecordPage() {
       setUploadError(
         err instanceof Error ? err.message : "Upload failed. Please try again."
       );
-      setStep("setup");
+      setStep("pick-rotation");
     }
   }, [supabase, selectedPreceptor, selectedRotation, selectedFormType, router]);
 
@@ -469,143 +469,95 @@ export default function RecordPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
         <div className="w-full max-w-lg space-y-6">
-          {/* ── Setup Step ──────────────────────────────────────────────── */}
-          {step === "setup" && (
+          {/* ── Setup Steps (button lists, no selects) ────────────────── */}
+          {(step === "pick-rotation" || step === "pick-preceptor" || step === "pick-form") && (
             <>
               {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="h-4 w-24 rounded bg-border-light animate-pulse" />
-                      <div className="h-12 rounded-[var(--radius-md)] bg-border-light animate-pulse" />
-                    </div>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-12 rounded-lg bg-border-light animate-pulse" />
                   ))}
                 </div>
               ) : fetchError ? (
-                <div className="rounded-[var(--radius-lg)] border border-border bg-error-bg p-4 text-center space-y-2">
-                  <p className="text-sm text-error font-medium">
-                    {fetchError}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="text-sm font-medium text-accent hover:text-accent-hover transition-colors"
-                  >
+                <div className="rounded-xl border border-border bg-error-bg p-4 text-center space-y-2">
+                  <p className="text-sm text-error font-medium">{fetchError}</p>
+                  <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-accent">
                     Retry
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-5">
-                  {/* Preceptor */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="preceptor"
-                      className="block text-sm font-medium text-muted"
-                    >
-                      Preceptor
-                    </label>
-                    <select
-                      id="preceptor"
-                      value={selectedPreceptor}
-                      onChange={(e) => setSelectedPreceptor(e.target.value)}
-                      className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-base text-foreground transition-colors focus:border-accent appearance-none"
-                    >
-                      <option value="">Select preceptor...</option>
-                      {preceptors.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          Dr. {p.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Rotation */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="rotation"
-                      className="block text-sm font-medium text-muted"
-                    >
-                      Rotation
-                    </label>
-                    <select
-                      id="rotation"
-                      value={selectedRotation}
-                      onChange={(e) => setSelectedRotation(e.target.value)}
-                      className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-base text-foreground transition-colors focus:border-accent appearance-none"
-                    >
-                      <option value="">Select rotation...</option>
-                      {rotations.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Form Type */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="formType"
-                      className="block text-sm font-medium text-muted"
-                    >
-                      Form Type
-                    </label>
-                    <select
-                      id="formType"
-                      value={selectedFormType}
-                      onChange={(e) => setSelectedFormType(e.target.value)}
-                      className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-base text-foreground transition-colors focus:border-accent appearance-none"
-                    >
-                      <option value="">Select form type...</option>
-                      {formTypes.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Mic permission error */}
-                  {micError && (
-                    <div className="rounded-[var(--radius-md)] border border-border bg-error-bg p-3 text-sm text-error">
-                      {micError}
-                    </div>
-                  )}
-
-                  {/* Upload error */}
-                  {uploadError && (
-                    <div className="rounded-[var(--radius-md)] border border-border bg-error-bg p-3 text-sm text-error">
-                      {uploadError}
-                    </div>
-                  )}
-
-                  {/* Offline saved message */}
-                  {isOffline && offlineBlob && (
-                    <div className="rounded-[var(--radius-md)] border border-border bg-warning-bg p-3 text-sm text-warning">
-                      Saved locally — will upload when connected
-                    </div>
-                  )}
-
-                  {/* Start button */}
-                  <button
-                    type="button"
-                    onClick={() => setStep("consent")}
-                    disabled={!canStartRecording}
-                    className="w-full rounded-[var(--radius-md)] bg-accent px-4 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <svg
-                        className="h-5 w-5"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
+              ) : step === "pick-rotation" ? (
+                <div>
+                  <h2 className="mb-3 text-lg font-semibold text-foreground">Select Rotation</h2>
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {rotations.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => { setSelectedRotation(r.id); setStep("pick-preceptor"); }}
+                        className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
                       >
-                        <circle cx="12" cy="12" r="8" />
-                      </svg>
-                      Start Recording
-                    </span>
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : step === "pick-preceptor" ? (
+                <div>
+                  <p className="mb-1 text-xs text-subtle">
+                    {rotations.find((r) => r.id === selectedRotation)?.name}
+                  </p>
+                  <h2 className="mb-3 text-lg font-semibold text-foreground">Select Preceptor</h2>
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {preceptors.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPreceptor(p.id);
+                          // If only one form type, auto-select and go to consent
+                          if (formTypes.length === 1) {
+                            setSelectedFormType(formTypes[0].id);
+                            setStep("consent");
+                          } else {
+                            setStep("pick-form");
+                          }
+                        }}
+                        className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
+                      >
+                        {p.full_name}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => { setSelectedRotation(""); setStep("pick-rotation"); }} className="mt-3 text-sm text-accent">
+                    &larr; Back to rotations
                   </button>
                 </div>
-              )}
+              ) : step === "pick-form" ? (
+                <div>
+                  <p className="mb-1 text-xs text-subtle">
+                    {rotations.find((r) => r.id === selectedRotation)?.name} &middot; {preceptors.find((p) => p.id === selectedPreceptor)?.full_name}
+                  </p>
+                  <h2 className="mb-3 text-lg font-semibold text-foreground">Select Form Type</h2>
+                  <div className="space-y-2">
+                    {formTypes.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => { setSelectedFormType(f.id); setStep("consent"); }}
+                        className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
+                      >
+                        <span className="font-medium">{f.name}</span>
+                        <span className="block text-sm text-muted mt-0.5">
+                          {f.extraction_mode === "multi" ? "1-5 field notes per conversation" : "One evaluation per shift"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => { setSelectedPreceptor(""); setStep("pick-preceptor"); }} className="mt-3 text-sm text-accent">
+                    &larr; Back to preceptors
+                  </button>
+                </div>
+              ) : null}
             </>
           )}
 
@@ -614,7 +566,7 @@ export default function RecordPage() {
             <ConsentModal
               preceptorName={selectedPreceptorObj.full_name}
               onConfirm={startRecording}
-              onCancel={() => setStep("setup")}
+              onCancel={() => setStep("pick-rotation")}
             />
           )}
 
