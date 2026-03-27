@@ -17,18 +17,47 @@
 
 ## University SSO (UBC CWL / Shibboleth)
 
-**What:** Replace magic link auth with institutional Single Sign-On via UBC Campus-Wide Login (CWL) or Shibboleth for both residents and PDs.
+**What:** Add institutional Single Sign-On via UBC Campus-Wide Login (CWL) for residents and PDs. Supabase supports SAML 2.0 SSO natively via `signInWithSSO()`.
 
-**Why:** Magic links work for a pilot with 5-10 users, but program-wide adoption requires institutional auth for security, compliance, and user management. PDs will need SSO when the dashboard ships.
+**Why:** Magic links work for the pilot, but program-wide adoption requires institutional auth. UBC IT provides CWL integration at no cost. SSO is table stakes for institutional procurement.
 
-**Pros:** Institutional trust. No password management. Automatic user provisioning from university directory.
-**Cons:** Shibboleth integration is non-trivial. Requires institutional IT cooperation. Each university has different IdP configuration.
+**Pros:** Institutional trust. No password management. Automatic user provisioning from university directory. Supabase has built-in SAML 2.0 support.
+**Cons:** Requires UBC IAM approval (2-6 week timeline). Supabase SAML SSO may require Pro plan or Enterprise add-on. Multi-school expansion requires Canadian Access Federation (CAF) membership.
 
-**Context:** User explicitly requested this as a future requirement. Build when expanding beyond pilot to program-wide adoption at UBC. Will need to be repeated per-university for multi-school expansion.
+**Context:** Researched 2026-03-26. UBC offers two protocols:
+- **Shibboleth (SAML 2.0):** Primary federated SSO. UBC IdP at `authentication.ubc.ca`. App must be a SAML Service Provider, ideally registered with Canadian Access Federation (CAF).
+- **CAS (Central Authentication Service):** Simpler redirect-based protocol. Good for UBC-only integration.
 
-**Effort:** M (human) → S with CC
-**Priority:** P2
-**Depends on:** Post-pilot expansion approval from PD
+Available identity attributes: CWL login name, PUID (persistent unique ID), email, name, affiliation (student/faculty/staff).
+
+**Integration steps:**
+1. Submit IAM request at `web.it.ubc.ca/forms/iam/` (select CAS or Shibboleth)
+2. UBC IT reviews and provisions
+3. Configure UBC's SAML metadata in Supabase Dashboard
+4. Test in staging, then production
+
+**Multi-school expansion path:**
+- 60% of Canadian universities use Shibboleth via the Canadian Access Federation (CAF, operated by CANARIE)
+- Register as a SAML SP with CAF for federated trust across all member institutions
+- Domain-based SSO routing: `ubc.ca` → UBC IdP, `utoronto.ca` → UofT IdP, etc.
+- CAF membership requires sponsorship from a member institution
+
+**App architecture prep (already scaffolded):**
+- Auth abstraction layer (Supabase client handles magic link + SSO behind same interface)
+- User model should add: `sso_provider`, `institutional_id`, `institution` fields
+- Domain-to-IdP mapping table for `signInWithSSO()` routing
+
+**References:**
+- UBC Shibboleth: https://it.ubc.ca/services/accounts-passwords/shibboleth
+- UBC CAS: https://it.ubc.ca/services/accounts-passwords/central-authentication-service-cas
+- UBC IAM Request: https://web.it.ubc.ca/forms/iam/
+- Supabase SAML SSO: https://supabase.com/docs/guides/auth/enterprise-sso/auth-sso-saml
+- Canadian Access Federation: https://www.canarie.ca/identity/caf/
+- UBC ComPAIR (open-source app with CWL integration): https://github.com/ubc/compair
+
+**Effort:** M (human, mostly waiting for UBC IT approval) → S with CC (technical implementation)
+**Priority:** P2 — short-term priority, start IAM request during pilot
+**Depends on:** Supabase Pro plan (for SAML SSO feature). Can submit IAM request in parallel with pilot.
 
 ## iOS Safari PWA Offline Reliability
 
