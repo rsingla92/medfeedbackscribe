@@ -1,0 +1,4 @@
+.gstack/
+node_modules/
+.env
+.env.local
