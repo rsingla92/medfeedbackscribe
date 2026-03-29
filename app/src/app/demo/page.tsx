@@ -142,6 +142,13 @@ export default function DemoPage() {
           <span className="rounded-full bg-warning-bg px-3 py-1 text-xs font-medium text-warning">DEMO</span>
         </div>
 
+        {/* Demo notice */}
+        <div className="mb-6 rounded-lg border border-border bg-surface p-3 text-xs text-muted leading-relaxed">
+          This is a demo with simulated data. The real app at{" "}
+          <a href="/auth" className="text-accent font-medium">/auth</a>{" "}
+          tracks sessions per authenticated resident with real STT + LLM processing.
+        </div>
+
         {/* ─── PICK ROTATION ─── */}
         {step === "pick-rotation" && (
           <div>
