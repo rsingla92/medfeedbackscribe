@@ -268,7 +268,7 @@ function buildPdfDocument(
 }
 
 // ---------- Route Handler ----------
-export async function GET(
+export async function POST(
   _req: NextRequest,
   ctx: RouteContext<"/api/export/[id]">
 ) {
@@ -286,11 +286,11 @@ export async function GET(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch session
+    // Fetch session with joined data
     const { data: session, error: sessionError } = await supabase
       .from("sessions")
       .select(
-        "id, user_id, form_template_id, preceptor_email, rotation, created_at"
+        "id, user_id, form_template_id, preceptor_id, created_at, preceptor:preceptors(name, email), rotation:rotations(name)"
       )
       .eq("id", sessionId)
       .single();
@@ -333,12 +333,16 @@ export async function GET(
       );
     }
 
+    // Normalize joined data
+    const preceptor = Array.isArray(session.preceptor) ? session.preceptor[0] : session.preceptor;
+    const rotation = Array.isArray(session.rotation) ? session.rotation[0] : session.rotation;
+
     // Build PDF
     const meta: SessionMeta = {
       formName: formTemplate.name,
-      preceptorEmail: session.preceptor_email,
+      preceptorEmail: preceptor?.email ?? preceptor?.name ?? null,
       residentEmail: user.email ?? "Unknown",
-      rotation: session.rotation,
+      rotation: rotation?.name ?? null,
       date: new Date(session.created_at).toLocaleDateString("en-CA"),
     };
 
@@ -356,6 +360,12 @@ export async function GET(
       .from("assessments")
       .update({ exported_at: new Date().toISOString() })
       .in("id", assessmentIds);
+
+    // Update session status to exported
+    await supabase
+      .from("sessions")
+      .update({ status: "exported" })
+      .eq("id", sessionId);
 
     // Build a safe filename
     const safeName = formTemplate.name.replace(/[^a-zA-Z0-9-_ ]/g, "").trim();
