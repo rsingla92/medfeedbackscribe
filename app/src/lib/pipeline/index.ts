@@ -17,6 +17,7 @@
 import { transcribeAudio, type STTResult } from "./stt";
 import { scrubTranscript } from "./phi-scrub";
 import { extractAssessment, type ExtractionResult } from "./extract";
+import { sendPreceptorSummary } from "@/lib/email";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface PipelineConfig {
@@ -207,9 +208,27 @@ export async function runPipeline(
     if (input.preceptorEmail) {
       const emailStart = Date.now();
       try {
-        // TODO: implement email sending via Resend
-        // For now, log as skipped
-        await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "Not implemented yet");
+        // Build a summary from the first assessment's narrative
+        const summary = extraction.outputs
+          .map((o) => o.narrative_summary)
+          .filter(Boolean)
+          .join(" ");
+
+        if (!process.env.RESEND_API_KEY) {
+          await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "RESEND_API_KEY not configured");
+        } else if (summary) {
+          const sent = await sendPreceptorSummary(input.preceptorEmail, summary);
+          await logStep(
+            supabase,
+            input.sessionId,
+            "email",
+            sent ? "completed" : "failed",
+            emailStart,
+            sent ? undefined : "Email send returned false"
+          );
+        } else {
+          await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "No narrative summary to send");
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Email error";
         await logStep(supabase, input.sessionId, "email", "failed", emailStart, message);
