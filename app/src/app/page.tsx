@@ -7,9 +7,10 @@ type SessionStatus = "processing" | "ready" | "exported";
 
 interface FeedbackSession {
   id: string;
-  preceptor_name: string | null;
-  rotation: string | null;
+  preceptor: { name: string } | null;
+  rotation: { name: string } | null;
   created_at: string;
+  date: string;
   status: SessionStatus;
 }
 
@@ -82,12 +83,12 @@ function SessionCard({ session }: { session: FeedbackSession }) {
     >
       <div className="flex-1 min-w-0 space-y-1">
         <p className="text-sm font-semibold text-foreground truncate">
-          {session.preceptor_name ?? "Unknown preceptor"}
+          {session.preceptor?.name ?? "Unknown preceptor"}
         </p>
         <div className="flex items-center gap-2 text-xs text-muted">
-          {session.rotation && (
+          {session.rotation?.name && (
             <>
-              <span className="truncate">{session.rotation}</span>
+              <span className="truncate">{session.rotation.name}</span>
               <span aria-hidden="true" className="text-subtle">
                 ·
               </span>
@@ -151,12 +152,16 @@ export default async function HomePage() {
   if (user) {
     const { data } = await supabase
       .from("sessions")
-      .select("id, preceptor_name, rotation, created_at, status")
+      .select("id, status, created_at, date, preceptor:preceptors(name), rotation:rotations(name)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
 
-    sessions = (data as FeedbackSession[]) ?? [];
+    sessions = ((data ?? []) as unknown as FeedbackSession[]).map((s) => ({
+      ...s,
+      preceptor: Array.isArray(s.preceptor) ? s.preceptor[0] : s.preceptor,
+      rotation: Array.isArray(s.rotation) ? s.rotation[0] : s.rotation,
+    }));
   }
 
   return (

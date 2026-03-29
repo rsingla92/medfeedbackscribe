@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 
 interface Preceptor {
   id: string;
-  full_name: string;
+  name: string;
   email: string;
 }
 
@@ -17,7 +17,7 @@ interface Rotation {
   name: string;
 }
 
-interface FormType {
+interface FormTemplate {
   id: string;
   name: string;
   extraction_mode: "multi" | "single";
@@ -190,10 +190,10 @@ export default function RecordPage() {
   // Setup state
   const [preceptors, setPreceptors] = useState<Preceptor[]>([]);
   const [rotations, setRotations] = useState<Rotation[]>([]);
-  const [formTypes, setFormTypes] = useState<FormType[]>([]);
+  const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
   const [selectedPreceptor, setSelectedPreceptor] = useState("");
   const [selectedRotation, setSelectedRotation] = useState("");
-  const [selectedFormType, setSelectedFormType] = useState("");
+  const [selectedFormTemplate, setSelectedFormTemplate] = useState("");
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -219,19 +219,19 @@ export default function RecordPage() {
       setFetchError(null);
 
       try {
-        const [preceptorRes, rotationRes, formTypeRes] = await Promise.all([
-          supabase.from("preceptors").select("id, full_name, email").order("full_name"),
+        const [preceptorRes, rotationRes, formTemplateRes] = await Promise.all([
+          supabase.from("preceptors").select("id, name, email").order("name"),
           supabase.from("rotations").select("id, name").order("name"),
-          supabase.from("form_types").select("id, name, extraction_mode").order("name"),
+          supabase.from("form_templates").select("id, name, extraction_mode").order("name"),
         ]);
 
         if (preceptorRes.error) throw preceptorRes.error;
         if (rotationRes.error) throw rotationRes.error;
-        if (formTypeRes.error) throw formTypeRes.error;
+        if (formTemplateRes.error) throw formTemplateRes.error;
 
         setPreceptors(preceptorRes.data ?? []);
         setRotations(rotationRes.data ?? []);
-        setFormTypes(formTypeRes.data ?? []);
+        setFormTemplates(formTemplateRes.data ?? []);
       } catch (err) {
         setFetchError(
           err instanceof Error ? err.message : "Failed to load setup data"
@@ -273,7 +273,7 @@ export default function RecordPage() {
     (p) => p.id === selectedPreceptor
   );
   const canStartRecording =
-    selectedPreceptor && selectedRotation && selectedFormType;
+    selectedPreceptor && selectedRotation && selectedFormTemplate;
 
   // ── Start recording ──────────────────────────────────────────────────────────
 
@@ -361,8 +361,9 @@ export default function RecordPage() {
         .insert({
           user_id: user.id,
           preceptor_id: selectedPreceptor,
-          rotation_id: selectedRotation,
-          form_type_id: selectedFormType,
+          rotation_id: selectedRotation || null,
+          form_template_id: selectedFormTemplate,
+          consent_confirmed: true,
           status: "uploading",
         })
         .select("id")
@@ -372,37 +373,23 @@ export default function RecordPage() {
       const sessionId = session.id;
 
       // Upload audio to storage
-      const fileName = `${user.id}/${sessionId}.webm`;
+      const storagePath = `${user.id}/${sessionId}.webm`;
       const { error: uploadErr } = await supabase.storage
         .from("recordings")
-        .upload(fileName, blob, {
+        .upload(storagePath, blob, {
           contentType: "audio/webm",
           upsert: false,
         });
 
       if (uploadErr) throw uploadErr;
 
-      // Get public URL for the audio
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("recordings").getPublicUrl(fileName);
-
       // Create recording record
       const { error: recordingErr } = await supabase.from("recordings").insert({
         session_id: sessionId,
-        storage_path: fileName,
-        audio_url: publicUrl,
-        file_size_bytes: blob.size,
-        mime_type: "audio/webm",
+        audio_path: storagePath,
       });
 
       if (recordingErr) throw recordingErr;
-
-      // Update session status
-      await supabase
-        .from("sessions")
-        .update({ status: "uploaded" })
-        .eq("id", sessionId);
 
       // Trigger processing pipeline
       try {
@@ -423,7 +410,7 @@ export default function RecordPage() {
       );
       setStep("pick-rotation");
     }
-  }, [supabase, selectedPreceptor, selectedRotation, selectedFormType, router]);
+  }, [supabase, selectedPreceptor, selectedRotation, selectedFormTemplate, router]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -515,8 +502,8 @@ export default function RecordPage() {
                         onClick={() => {
                           setSelectedPreceptor(p.id);
                           // If only one form type, auto-select and go to consent
-                          if (formTypes.length === 1) {
-                            setSelectedFormType(formTypes[0].id);
+                          if (formTemplates.length === 1) {
+                            setSelectedFormTemplate(formTemplates[0].id);
                             setStep("consent");
                           } else {
                             setStep("pick-form");
@@ -524,7 +511,7 @@ export default function RecordPage() {
                         }}
                         className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
                       >
-                        {p.full_name}
+                        {p.name}
                       </button>
                     ))}
                   </div>
@@ -535,15 +522,15 @@ export default function RecordPage() {
               ) : step === "pick-form" ? (
                 <div>
                   <p className="mb-1 text-xs text-subtle">
-                    {rotations.find((r) => r.id === selectedRotation)?.name} &middot; {preceptors.find((p) => p.id === selectedPreceptor)?.full_name}
+                    {rotations.find((r) => r.id === selectedRotation)?.name} &middot; {preceptors.find((p) => p.id === selectedPreceptor)?.name}
                   </p>
                   <h2 className="mb-3 text-lg font-semibold text-foreground">Select Form Type</h2>
                   <div className="space-y-2">
-                    {formTypes.map((f) => (
+                    {formTemplates.map((f) => (
                       <button
                         key={f.id}
                         type="button"
-                        onClick={() => { setSelectedFormType(f.id); setStep("consent"); }}
+                        onClick={() => { setSelectedFormTemplate(f.id); setStep("consent"); }}
                         className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
                       >
                         <span className="font-medium">{f.name}</span>
@@ -564,7 +551,7 @@ export default function RecordPage() {
           {/* ── Consent Modal ─────────────────────────────────────────── */}
           {step === "consent" && selectedPreceptorObj && (
             <ConsentModal
-              preceptorName={selectedPreceptorObj.full_name}
+              preceptorName={selectedPreceptorObj.name}
               onConfirm={startRecording}
               onCancel={() => setStep("pick-rotation")}
             />
@@ -592,7 +579,7 @@ export default function RecordPage() {
 
               {/* Preceptor label */}
               <p className="text-sm text-muted text-center">
-                Dr. {selectedPreceptorObj?.full_name}
+                Dr. {selectedPreceptorObj?.name}
               </p>
 
               {/* Stop button */}
