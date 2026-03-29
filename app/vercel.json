@@ -1,0 +1,11 @@
+{
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "framework": "nextjs",
+  "regions": ["yul1"],
+  "functions": {
+    "app/api/**": {
+      "maxDuration": 120
+    }
+  }
+}
