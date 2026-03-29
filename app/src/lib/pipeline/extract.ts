@@ -39,7 +39,7 @@ interface FormTemplate {
   competency_framework: string;
 }
 
-function buildExtractionPrompt(
+export function buildExtractionPrompt(
   transcript: string,
   template: FormTemplate
 ): string {
