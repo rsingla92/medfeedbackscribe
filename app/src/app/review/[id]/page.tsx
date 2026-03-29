@@ -10,12 +10,12 @@ export interface SessionData {
   id: string;
   status: "processing" | "processing_failed" | "ready" | "exported";
   created_at: string;
-  preceptor: { full_name: string };
-  rotation: { name: string };
-  form_type: { name: string; extraction_mode: "multi" | "single" };
+  preceptor: { name: string } | null;
+  rotation: { name: string } | null;
+  form_template: { name: string; extraction_mode: "multi" | "single" } | null;
   recording: {
     transcript_clean: string | null;
-    audio_url: string | null;
+    audio_path: string | null;
     duration_seconds: number | null;
   } | null;
   assessments: Assessment[];
@@ -47,10 +47,10 @@ export default async function ReviewPage(props: PageProps<"/review/[id]">) {
       id,
       status,
       created_at,
-      preceptor:preceptors(full_name),
+      preceptor:preceptors(name),
       rotation:rotations(name),
-      form_type:form_types(name, extraction_mode),
-      recording:recordings(transcript_clean, audio_url, duration_seconds),
+      form_template:form_templates(name, extraction_mode),
+      recording:recordings(transcript_clean, audio_path, duration_seconds),
       assessments(id, output_index, structured_fields, competency_tags, narrative_summary, coaching_did_well, coaching_consider, llm_confidence)
     `
     )
@@ -87,9 +87,9 @@ export default async function ReviewPage(props: PageProps<"/review/[id]">) {
     rotation: Array.isArray(session.rotation)
       ? session.rotation[0]
       : session.rotation,
-    form_type: Array.isArray(session.form_type)
-      ? session.form_type[0]
-      : session.form_type,
+    form_template: Array.isArray(session.form_template)
+      ? session.form_template[0]
+      : session.form_template,
     recording: Array.isArray(session.recording)
       ? session.recording[0] ?? null
       : session.recording,

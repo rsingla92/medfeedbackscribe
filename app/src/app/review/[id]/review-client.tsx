@@ -609,9 +609,23 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [exporting, setExporting] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(session.status);
   const [pollingStep, setPollingStep] = useState(session.pipeline_step ?? null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Security: only show PHI-scrubbed transcript. Never expose transcript_raw to client.
   const transcript = session.recording?.transcript_clean ?? null;
+
+  // Fetch signed URL for audio playback
+  useEffect(() => {
+    if (!session.recording?.audio_path) return;
+    const path = session.recording.audio_path;
+    supabase.storage
+      .from("recordings")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (data?.signedUrl) setAudioUrl(data.signedUrl);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.recording?.audio_path]);
 
   // ── Unsaved changes warning ──────────────────────────────────────────────────
 
@@ -758,7 +772,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     }
   );
 
-  const isMulti = session.form_type?.extraction_mode === "multi";
+  const isMulti = session.form_template?.extraction_mode === "multi";
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -804,7 +818,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
               Review Assessment
             </h1>
             <p className="text-xs text-muted truncate">
-              Dr. {session.preceptor?.full_name} &rarr; You &middot;{" "}
+              Dr. {session.preceptor?.name} &rarr; You &middot;{" "}
               {session.rotation?.name} &middot; {formattedDate}
             </p>
           </div>
@@ -914,8 +928,8 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       </div>
 
       {/* Audio Player Bar */}
-      {session.recording?.audio_url && (
-        <AudioPlayerBar audioUrl={session.recording.audio_url} />
+      {audioUrl && (
+        <AudioPlayerBar audioUrl={audioUrl} />
       )}
     </main>
   );
