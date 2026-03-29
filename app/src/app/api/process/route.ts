@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const { data: session, error: sessionError } = await supabase
       .from("sessions")
       .select(
-        "id, user_id, form_template_id, preceptor_email, status"
+        "id, user_id, form_template_id, preceptor_id, status"
       )
       .eq("id", sessionId)
       .single();
@@ -53,18 +53,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the recording audio URL
+    // Fetch the recording
     const { data: recording, error: recordingError } = await supabase
       .from("recordings")
-      .select("audio_url, language")
+      .select("audio_path, language")
       .eq("session_id", sessionId)
       .single();
 
-    if (recordingError || !recording?.audio_url) {
+    if (recordingError || !recording?.audio_path) {
       return Response.json(
         { error: "No recording found for this session" },
         { status: 404 }
       );
+    }
+
+    // Create a signed URL for the audio file
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from("recordings")
+      .createSignedUrl(recording.audio_path, 3600);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      return Response.json(
+        { error: "Failed to create audio URL" },
+        { status: 500 }
+      );
+    }
+
+    const audioUrl = signedUrlData.signedUrl;
+
+    // Fetch preceptor email for notification
+    let preceptorEmail: string | undefined;
+    if (session.preceptor_id) {
+      const { data: preceptor } = await supabase
+        .from("preceptors")
+        .select("email")
+        .eq("id", session.preceptor_id)
+        .single();
+      preceptorEmail = preceptor?.email ?? undefined;
     }
 
     // Fetch form template
@@ -99,7 +124,7 @@ export async function POST(request: NextRequest) {
       supabase,
       {
         sessionId,
-        audioUrl: recording.audio_url,
+        audioUrl,
         language: (recording.language as "en" | "fr") || "en",
         formTemplate: {
           name: formTemplate.name,
@@ -108,7 +133,7 @@ export async function POST(request: NextRequest) {
           fields: formTemplate.fields as Record<string, unknown>,
           competency_framework: formTemplate.competency_framework,
         },
-        preceptorEmail: session.preceptor_email ?? undefined,
+        preceptorEmail,
       },
       {
         deepgramApiKey,
