@@ -607,6 +607,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(session.status);
   const [pollingStep, setPollingStep] = useState(session.pipeline_step ?? null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -741,6 +742,34 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       console.error("Export failed:", err);
     } finally {
       setExporting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id, hasUnsavedChanges, handleSave]);
+
+  // ── Export CSV (One45) ────────────────────────────────────────────────────────
+
+  const handleExportCsv = useCallback(async () => {
+    setExportingCsv(true);
+    try {
+      // Save any unsaved changes first
+      if (hasUnsavedChanges) await handleSave();
+
+      const res = await fetch(`/api/export/csv/${session.id}`);
+      if (!res.ok) throw new Error("CSV export failed");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `assessment-${session.id}-one45.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setSessionStatus("exported");
+    } catch (err) {
+      console.error("CSV export failed:", err);
+    } finally {
+      setExportingCsv(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, hasUnsavedChanges, handleSave]);
@@ -923,6 +952,31 @@ export default function ReviewClient({ session }: { session: SessionData }) {
                     : "Export as PDF"}
               </button>
             </div>
+
+            {/* One45 CSV export */}
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={exportingCsv}
+              className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-border-light disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <svg
+                className="h-4 w-4 text-muted"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                />
+              </svg>
+              {exportingCsv
+                ? "Exporting..."
+                : "Export CSV for One45"}
+            </button>
           </>
         )}
       </div>
