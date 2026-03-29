@@ -52,21 +52,20 @@ export default async function MetricsPage() {
     .select("*", { count: "exact", head: true })
     .in("status", ["ready", "exported"]);
 
-  // Unique preceptors (distinct preceptor_email where not null)
+  // Unique preceptors (distinct preceptor_id)
   const { data: preceptorRows } = await supabase
     .from("sessions")
-    .select("preceptor_email")
-    .not("preceptor_email", "is", null);
+    .select("preceptor_id");
 
   const uniquePreceptors = new Set(
-    (preceptorRows ?? []).map((r) => r.preceptor_email)
+    (preceptorRows ?? []).map((r) => r.preceptor_id)
   ).size;
 
   // Average turnaround: time from created_at to the first assessment export
   const { data: turnaroundRows } = await supabase
     .from("sessions")
     .select("created_at, assessments(exported_at)")
-    .not("status", "eq", "draft");
+    .not("status", "eq", "created");
 
   let avgTurnaroundLabel = "--";
 
