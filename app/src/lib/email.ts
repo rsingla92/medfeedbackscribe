@@ -7,6 +7,18 @@
 
 import { Resend } from "resend";
 
+/**
+ * Escape special HTML characters to prevent content injection.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 interface SendEmailOptions {
   to: string;
   subject: string;
@@ -54,7 +66,7 @@ export async function sendPreceptorSummary(
         Debrief: Feedback session recorded
       </h2>
       <p style="color: #44403C; font-size: 14px; line-height: 1.6;">
-        ${narrativeSummary}
+        ${escapeHtml(narrativeSummary)}
       </p>
       <hr style="border: none; border-top: 1px solid #E7E5E4; margin: 20px 0;" />
       <p style="color: #A8A29E; font-size: 12px;">
