@@ -38,8 +38,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
 
   const resend = new Resend(apiKey);
 
+  const from =
+    process.env.RESEND_FROM_EMAIL ?? "Debrief <noreply@debrief.whitecoatprep.com>";
+
   const { error } = await resend.emails.send({
-    from: "Debrief <noreply@debrief.whitecoatprep.com>",
+    from,
     to: options.to,
     subject: options.subject,
     html: options.html,

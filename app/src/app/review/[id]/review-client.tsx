@@ -754,7 +754,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       // Save any unsaved changes first
       if (hasUnsavedChanges) await handleSave();
 
-      const res = await fetch(`/api/export/csv/${session.id}`);
+      const res = await fetch(`/api/export/csv/${session.id}`, { method: "POST" });
       if (!res.ok) throw new Error("CSV export failed");
 
       const blob = await res.blob();

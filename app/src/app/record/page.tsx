@@ -272,8 +272,6 @@ export default function RecordPage() {
   const selectedPreceptorObj = preceptors.find(
     (p) => p.id === selectedPreceptor
   );
-  const canStartRecording =
-    selectedPreceptor && selectedRotation && selectedFormTemplate;
 
   // ── Start recording ──────────────────────────────────────────────────────────
 

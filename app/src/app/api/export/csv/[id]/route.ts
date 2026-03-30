@@ -29,12 +29,12 @@ const CANMEDS_ROLES = [
 
 // ── Route Handler ───────────────────────────────────────────────────────────────
 
-export async function GET(
+export async function POST(
   _req: NextRequest,
-  ctx: RouteContext<"/api/export/csv/[id]">
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: sessionId } = await ctx.params;
+    const { id: sessionId } = await params;
     const supabase = await createClient();
 
     // Authenticate
