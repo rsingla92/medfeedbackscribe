@@ -7,6 +7,18 @@
 
 import { Resend } from "resend";
 
+/**
+ * Escape special HTML characters to prevent content injection.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 interface SendEmailOptions {
   to: string;
   subject: string;
@@ -26,8 +38,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
 
   const resend = new Resend(apiKey);
 
+  const from =
+    process.env.RESEND_FROM_EMAIL ?? "Debrief <noreply@debrief.whitecoatprep.com>";
+
   const { error } = await resend.emails.send({
-    from: "Debrief <noreply@medscribe.ca>",
+    from,
     to: options.to,
     subject: options.subject,
     html: options.html,
@@ -54,7 +69,7 @@ export async function sendPreceptorSummary(
         Debrief: Feedback session recorded
       </h2>
       <p style="color: #44403C; font-size: 14px; line-height: 1.6;">
-        ${narrativeSummary}
+        ${escapeHtml(narrativeSummary)}
       </p>
       <hr style="border: none; border-top: 1px solid #E7E5E4; margin: 20px 0;" />
       <p style="color: #A8A29E; font-size: 12px;">

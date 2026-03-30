@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 /** Hardcoded admin emails for the pilot phase. */
 const PILOT_ADMINS = [
-  "admin@medscribe.ca",
+  "admin@debrief.whitecoatprep.com",
   // Add pilot admin emails here
 ];
 

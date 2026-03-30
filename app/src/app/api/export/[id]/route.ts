@@ -270,10 +270,10 @@ function buildPdfDocument(
 // ---------- Route Handler ----------
 export async function POST(
   _req: NextRequest,
-  ctx: RouteContext<"/api/export/[id]">
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: sessionId } = await ctx.params;
+    const { id: sessionId } = await params;
     const supabase = await createClient();
 
     // Authenticate
