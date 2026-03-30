@@ -1,3 +1,5 @@
+> **Note:** This specification predates the current implementation. See [docs/designs/medscribe-pilot-design.md](./docs/designs/medscribe-pilot-design.md) for the current design document.
+
 # Requirements Specification (SRS v1.0)
 
 

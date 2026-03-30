@@ -1,5 +1,7 @@
 # Debrief by Whitecoat Prep
 
+**Talk first. Forms second.**
+
 AI-powered voice-to-assessment platform for medical trainee feedback.
 
 ## Problem
@@ -78,7 +80,7 @@ medfeedbackscribe/
 │   │   └── lib/            # Shared utilities
 │   │       ├── pipeline/   # STT → PHI scrub → LLM extraction
 │   │       ├── supabase/   # Supabase client helpers
-│   │       ├── templates/  # Assessment form templates
+│   │       ├── templates/  # Assessment form templates (JSON)
 │   │       └── email.ts    # Resend integration
 │   ├── supabase/
 │   │   ├── migrations/     # Database schema migrations
@@ -99,9 +101,21 @@ See [DESIGN.md](./DESIGN.md) for the full design system. Key choices:
 - Mobile-first single-column layout, max 960px content width
 - Minimal decoration — content is the visual focus
 
+## Testing
+
+```bash
+bun run test
+```
+
+14 unit tests (Vitest) covering PHI scrubbing and LLM extraction. Test files live in `app/tests/unit/`.
+
 ## Demo
 
 The `/demo` page works without authentication. Use it for PD meetings and stakeholder demos.
+
+## Deployment
+
+See [docs/DEPLOY-VERCEL.md](./docs/DEPLOY-VERCEL.md) for the Vercel deployment guide.
 
 ## License
 

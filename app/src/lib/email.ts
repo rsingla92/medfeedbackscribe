@@ -27,7 +27,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const resend = new Resend(apiKey);
 
   const { error } = await resend.emails.send({
-    from: "Debrief <noreply@medscribe.ca>",
+    from: "Debrief <noreply@debrief.whitecoatprep.com>",
     to: options.to,
     subject: options.subject,
     html: options.html,
