@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedScribe — Voice-to-Assessment for Medical Education</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --accent: #D97706;
+      --accent-light: #FEF3C7;
+      --accent-hover: #B45309;
+      --bg: #FAFAF9;
+      --surface: #FFFFFF;
+      --text: #1C1917;
+      --text-muted: #78716C;
+      --text-subtle: #A8A29E;
+      --border: #E7E5E4;
+      --border-light: #F5F5F4;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(250, 250, 249, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .nav-logo {
+      font-family: 'Instrument Serif', serif;
+      font-size: 24px;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 20px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: background-color 150ms ease;
+    }
+
+    .nav-cta:hover {
+      background: var(--accent-hover);
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(217,119,6,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--accent-light);
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent-hover);
+      margin-bottom: 32px;
+    }
+
+    .hero-badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .hero-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 64px;
+      line-height: 1.05;
+      color: var(--text);
+      margin-bottom: 24px;
+      letter-spacing: -0.5px;
+    }
+
+    .hero-title span {
+      display: block;
+      font-family: 'Instrument Serif', serif;
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 36px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      box-shadow: 0 4px 24px rgba(217, 119, 6, 0.3);
+      transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+    }
+
+    .hero-cta:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 6px 32px rgba(217, 119, 6, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .hero-trust {
+      margin-top: 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-subtle);
+    }
+
+    .hero-trust svg {
+      flex-shrink: 0;
+    }
+
+    /* ===== PROBLEM / EVIDENCE WALL ===== */
+    .problem {
+      padding: 96px 24px;
+      text-align: center;
+    }
+
+    .problem-stat {
+      font-family: 'Instrument Serif', serif;
+      font-size: 120px;
+      line-height: 1;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .problem-stat-label {
+      font-size: 20px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin: 0 auto 64px;
+    }
+
+    .problem-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .problem-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      text-align: left;
+    }
+
+    .problem-card-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-light);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .problem-card h3 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .problem-card p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    /* ===== HOW IT WORKS ===== */
+    .how {
+      background: var(--text);
+      padding: 96px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .how-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .how-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 48px;
+      line-height: 1.1;
+      color: #FAFAF9;
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .how-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+      max-width: 640px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .how-steps::before {
+      content: '';
+      position: absolute;
+      left: 24px;
+      top: 56px;
+      bottom: 40px;
+      width: 2px;
+      background: rgba(217, 119, 6, 0.25);
+    }
+
+    .how-step {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    .how-step-num {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .how-step-content h3 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 24px;
+      color: #FAFAF9;
+      margin-bottom: 8px;
+    }
+
+    .how-step-content p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-subtle);
+    }
+
+    /* Waveform SVG decoration */
+    .how-waveform {
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0.08;
+    }
+
+    /* ===== FEATURES ===== */
+    .features {
+      padding: 96px 24px;
+    }
+
+    .features-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .features-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 48px;
+      line-height: 1.1;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      transition: box-shadow 150ms ease, transform 150ms ease;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 8px 32px rgba(28, 25, 23, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .feature-card-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--accent-light);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 22px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .feature-card p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .feature-tag {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 10px;
+      background: var(--border-light);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* ===== SOCIAL PROOF ===== */
+    .proof {
+      padding: 64px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .proof-items {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .proof-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 17px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .proof-item .check {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .proof-divider {
+      width: 48px;
+      height: 2px;
+      background: var(--border);
+    }
+
+    /* ===== CTA ===== */
+    .cta {
+      padding: 96px 24px;
+      text-align: center;
+    }
+
+    .cta-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 48px;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .cta-sub {
+      font-size: 18px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 18px 44px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      box-shadow: 0 4px 24px rgba(217, 119, 6, 0.3);
+      transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+    }
+
+    .cta-btn:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 6px 32px rgba(217, 119, 6, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 32px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    footer p {
+      font-size: 13px;
+      color: var(--text-subtle);
+      line-height: 1.8;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 40px;
+      }
+
+      .hero-sub {
+        font-size: 16px;
+      }
+
+      .problem-stat {
+        font-size: 80px;
+      }
+
+      .problem-cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .how-title {
+        font-size: 36px;
+      }
+
+      .features-title {
+        font-size: 36px;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .cta-title {
+        font-size: 36px;
+      }
+
+      .how-steps::before {
+        left: 23px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero {
+        padding: 80px 20px 48px;
+      }
+
+      .hero-title {
+        font-size: 34px;
+      }
+
+      .hero-cta {
+        padding: 14px 28px;
+        font-size: 15px;
+      }
+
+      .problem-stat {
+        font-size: 64px;
+      }
+
+      .how-step {
+        gap: 16px;
+      }
+
+      .how-step-num {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+      }
+
+      .how-step-content h3 {
+        font-size: 20px;
+      }
+
+      .feature-card {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="container">
+      <a href="#" class="nav-logo">MedScribe</a>
+      <a href="/demo" class="nav-cta">Try the Demo</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Now piloting at UBC Family Medicine
+    </div>
+    <h1 class="hero-title">
+      Capture feedback.<br>
+      <span>Skip the forms.</span>
+    </h1>
+    <p class="hero-sub">
+      AI-powered voice-to-assessment for medical education. Preceptors speak. Residents get structured feedback in minutes, not months.
+    </p>
+    <a href="/demo" class="hero-cta">
+      Try the Demo
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+    <div class="hero-trust">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 1L2 4v4c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7V4L8 1z" stroke="#A8A29E" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M5.5 8l2 2 3.5-4" stroke="#A8A29E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Data encrypted at rest (AES-256) and stored in Canada
+    </div>
+  </section>
+
+  <!-- Problem / Evidence Wall -->
+  <section class="problem">
+    <div class="container">
+      <div class="problem-stat">87%</div>
+      <p class="problem-stat-label">
+        of trainee assessments are incomplete, delayed, or filled by the trainee themselves
+      </p>
+      <div class="problem-cards">
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="8" stroke="#D97706" stroke-width="1.5"/>
+              <path d="M10 6v4l2.5 2.5" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Preceptors are too busy</h3>
+          <p>Between patient care, teaching, and admin, filling out forms is the first thing that gets skipped.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="5" width="14" height="10" rx="2" stroke="#D97706" stroke-width="1.5"/>
+              <path d="M7 9h6M7 12h4" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Residents wait months</h3>
+          <p>Written feedback arrives long after the clinical encounter, stripping away context and learning value.</p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M4 15l3-5 3 3 3-7 3 4" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 17h12" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Programs have no data</h3>
+          <p>Competency committees make decisions with incomplete records. High-stakes assessments built on thin evidence.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how">
+    <div class="container">
+      <p class="how-label">How it works</p>
+      <h2 class="how-title">Voice first. Forms second.</h2>
+      <div class="how-steps">
+        <div class="how-step">
+          <div class="how-step-num">1</div>
+          <div class="how-step-content">
+            <h3>Record</h3>
+            <p>Resident taps record. Preceptor speaks naturally for 1-2 minutes about the encounter, strengths, and areas for growth.</p>
+          </div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">2</div>
+          <div class="how-step-content">
+            <h3>Process</h3>
+            <p>AI transcribes, de-identifies PHI, and extracts structured assessment mapped to CanMEDS competencies.</p>
+          </div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">3</div>
+          <div class="how-step-content">
+            <h3>Review</h3>
+            <p>Resident reviews auto-populated field notes with confidence scores. Edit, approve, and export as PDF.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Waveform decoration -->
+    <svg class="how-waveform" width="960" height="120" viewBox="0 0 960 120" fill="none">
+      <path d="M0 60 Q40 20, 80 60 Q120 100, 160 60 Q200 20, 240 60 Q280 100, 320 60 Q360 20, 400 60 Q440 100, 480 60 Q520 20, 560 60 Q600 100, 640 60 Q680 20, 720 60 Q760 100, 800 60 Q840 20, 880 60 Q920 100, 960 60" stroke="#D97706" stroke-width="3" fill="none"/>
+      <path d="M0 60 Q40 40, 80 60 Q120 80, 160 60 Q200 40, 240 60 Q280 80, 320 60 Q360 40, 400 60 Q440 80, 480 60 Q520 40, 560 60 Q600 80, 640 60 Q680 40, 720 60 Q760 80, 800 60 Q840 40, 880 60 Q920 80, 960 60" stroke="#D97706" stroke-width="2" fill="none"/>
+    </svg>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="container">
+      <p class="features-label">Features</p>
+      <h2 class="features-title">Built for medical education</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="3" stroke="#D97706" stroke-width="1.5"/>
+              <path d="M8 8h8M8 12h8M8 16h5" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Multi-form support</h3>
+          <p>Auto-populate T-Res Field Notes, One45 Daily Evaluations, and more. One recording fills out whichever form your program uses.</p>
+          <span class="feature-tag">T-Res + One45</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#D97706" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#D97706" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>PHI protection</h3>
+          <p>Dual-pass scrubbing: fast regex catches names and MRNs, then a contextual LLM pass catches everything else. Zero PHI in storage.</p>
+          <span class="feature-tag">Regex + LLM dual-pass</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#D97706" stroke-width="1.5"/>
+              <path d="M12 3C12 3 15 8 15 12s-3 9-3 9M12 3C12 3 9 8 9 12s3 9 3 9M3 12h18" stroke="#D97706" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <h3>CanMEDS mapping</h3>
+          <p>Feedback is automatically tagged to CanMEDS competency roles. See which skills your preceptor actually observed.</p>
+          <span class="feature-tag">7 roles</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 21a9 9 0 110-18 9 9 0 010 18z" stroke="#D97706" stroke-width="1.5"/>
+              <path d="M8 10h.01M16 10h.01M9 15c1 1.5 5 1.5 6 0" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>French language</h3>
+          <p>Full transcription and assessment extraction in French. Preceptors at francophone programs can speak in their preferred language.</p>
+          <span class="feature-tag">EN + FR</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social Proof -->
+  <section class="proof">
+    <div class="container">
+      <div class="proof-items">
+        <div class="proof-item">
+          <div class="check">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7l3 3 5-6" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          Piloting with UBC Family Medicine
+        </div>
+        <div class="proof-divider"></div>
+        <div class="proof-item">
+          <div class="check">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7l3 3 5-6" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          Developed by a resident who lived the problem
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="container">
+      <h2 class="cta-title">Ready to see it in action?</h2>
+      <p class="cta-sub">Two minutes of speech. One complete assessment form.</p>
+      <a href="/demo" class="cta-btn">
+        Try the Demo
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M4 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>MedScribe &copy; 2026</p>
+      <p>Data stored in Canada (ca-central-1)</p>
+    </div>
+  </footer>
+
+</body>
+</html>
