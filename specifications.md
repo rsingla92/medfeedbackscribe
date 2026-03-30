@@ -1,7 +1,7 @@
 # Requirements Specification (SRS v1.0)
 
 
-Project: MedScribe AI
+Project: Debrief AI
 Last Updated: November 2025
 Author: Rohit Singla
 Audience: Engineering & Product Team
@@ -25,7 +25,7 @@ The system eliminates manual form entry, detects potential bias, and visualizes 
 * Enable JSON export compatible with Entrada or One45 APIs.
 
 ### 1.2 Purpose Statement
-MedScribe AI serves as an **AI-powered real-time assessment companion** that passively captures conversations and automatically maps them into structured educational metrics — bridging qualitative dialogue and quantitative analytics while preserving privacy.
+Debrief AI serves as an **AI-powered real-time assessment companion** that passively captures conversations and automatically maps them into structured educational metrics — bridging qualitative dialogue and quantitative analytics while preserving privacy.
 
 ## 2. User Roles & Permissions
 | Role                         | Permissions                                                                              |
@@ -115,7 +115,7 @@ Interactive dashboards built with Chart.js, providing:
 
 **Indexes:** user_id, date, skill_dimension
 **Mapping Tables**
-* MedScribe topic → Entrada EPA_ID (for interoperability).
+* Debrief topic → Entrada EPA_ID (for interoperability).
 
 ## 5. API Endpoints (v1)
 | Method    | Route                    | Description                                |
@@ -221,7 +221,7 @@ Moving average over 4-week window; visualized per skill dimension.
 ## 13. Key Technical Takeaways
 * **Latency target:** ≤60s transcription-to-structured-data.
 * **Integration readiness:** JSON export conforming to Entrada schema.
-* **Mapping table:** MedScribe topic → Entrada EPA_ID.
+* **Mapping table:** Debrief topic → Entrada EPA_ID.
 * **Privacy hooks:** Delete audio upon success; anonymize before LLM.
 * **OAuth support:** University SSO and Entrada/One45 integration.
 

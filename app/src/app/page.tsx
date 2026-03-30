@@ -169,10 +169,10 @@ export default async function HomePage() {
       {/* Header */}
       <header className="px-6 pt-12 pb-2">
         <h1 className="text-3xl font-[family-name:var(--font-display)] text-foreground">
-          MedScribe
+          Debrief
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Capture feedback. Skip the forms.
+          Talk first. Forms second.
         </p>
       </header>
 

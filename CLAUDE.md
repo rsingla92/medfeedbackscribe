@@ -1,4 +1,4 @@
-# MedScribe
+# Debrief
 
 ## Project
 AI-powered voice-to-assessment platform for medical trainee feedback. Residents capture verbal preceptor feedback, which gets transcribed and auto-populates required assessment forms.

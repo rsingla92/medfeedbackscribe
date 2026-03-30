@@ -27,7 +27,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const resend = new Resend(apiKey);
 
   const { error } = await resend.emails.send({
-    from: "MedScribe <noreply@medscribe.ca>",
+    from: "Debrief <noreply@medscribe.ca>",
     to: options.to,
     subject: options.subject,
     html: options.html,
@@ -51,21 +51,21 @@ export async function sendPreceptorSummary(
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
       <h2 style="color: #1C1917; font-size: 18px; margin-bottom: 16px;">
-        MedScribe: Feedback session recorded
+        Debrief: Feedback session recorded
       </h2>
       <p style="color: #44403C; font-size: 14px; line-height: 1.6;">
         ${narrativeSummary}
       </p>
       <hr style="border: none; border-top: 1px solid #E7E5E4; margin: 20px 0;" />
       <p style="color: #A8A29E; font-size: 12px;">
-        This is an automated notification from MedScribe. The resident will review the assessment before submitting.
+        This is an automated notification from Debrief. The resident will review the assessment before submitting.
       </p>
     </div>
   `;
 
   return sendEmail({
     to: preceptorEmail,
-    subject: "MedScribe: Feedback session recorded",
+    subject: "Debrief: Feedback session recorded",
     html,
   });
 }

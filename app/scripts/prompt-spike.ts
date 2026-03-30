@@ -280,7 +280,7 @@ function evaluateResult(
 }
 
 async function main() {
-  console.log("=== MedScribe Prompt Engineering Spike ===\n");
+  console.log("=== Debrief Prompt Engineering Spike ===\n");
   console.log(`Template: ${template.name}`);
   console.log(`Mode: ${template.extraction_mode}, max_outputs: ${template.max_outputs}`);
   console.log(`Framework: ${template.competency_framework}\n`);

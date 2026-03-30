@@ -1,4 +1,4 @@
--- MedScribe Schema — Pilot
+-- Debrief Schema — Pilot
 -- Matches data model from design doc
 
 -- Preceptors (seeded from program roster, no auth)

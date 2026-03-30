@@ -136,22 +136,21 @@ export default function DemoPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-[family-name:var(--font-display)] text-foreground">MedScribe</h1>
+            <h1 className="text-3xl font-[family-name:var(--font-display)] text-foreground">Debrief</h1>
             <p className="text-sm text-muted">Demo Mode</p>
           </div>
           <span className="rounded-full bg-warning-bg px-3 py-1 text-xs font-medium text-warning">DEMO</span>
         </div>
 
-        {/* Demo notice */}
-        <div className="mb-6 rounded-lg border border-border bg-surface p-3 text-xs text-muted leading-relaxed">
-          This is a demo with simulated data. The real app at{" "}
-          <a href="/auth" className="text-accent font-medium">/auth</a>{" "}
-          tracks sessions per authenticated resident with real STT + LLM processing.
-        </div>
-
         {/* ─── PICK ROTATION ─── */}
         {step === "pick-rotation" && (
           <div>
+            {/* Demo notice — only shown on pick-rotation step */}
+            <div className="mb-6 rounded-lg border border-border bg-surface p-3 text-xs text-muted leading-relaxed">
+              This is a demo with simulated data. The real app at{" "}
+              <a href="/auth" className="text-accent font-medium">/auth</a>{" "}
+              tracks sessions per authenticated resident with real STT + LLM processing.
+            </div>
             <h2 className="mb-3 text-lg font-semibold text-foreground">Select Rotation</h2>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {ROTATIONS.map((r) => (
@@ -235,7 +234,7 @@ export default function DemoPage() {
               <h2 className="mb-2 text-lg font-semibold text-foreground">Consent Confirmation</h2>
               <p className="text-sm text-muted">
                 <span className="font-medium text-foreground">{preceptor}</span>{" "}
-                has agreed to have this feedback session recorded and processed by MedScribe.
+                has agreed to have this feedback session recorded and processed by Debrief.
               </p>
               <div className="mt-3 rounded-lg bg-background px-3 py-2 text-xs text-subtle">
                 {rotation} &middot; {formType}

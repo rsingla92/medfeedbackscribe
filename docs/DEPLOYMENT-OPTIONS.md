@@ -1,10 +1,10 @@
-# MedScribe Deployment Options
+# Debrief Deployment Options
 
 **Last updated:** 2026-03-28
 
 ## Context
 
-MedScribe is a Next.js 16 application with a Supabase backend (already deployed to `ca-central-1`). The app handles medical feedback data, including audio file uploads that go through a 30-60 second processing pipeline. Canadian data residency is strongly preferred. Budget target: free tier or under $20/month for pilot.
+Debrief is a Next.js 16 application with a Supabase backend (already deployed to `ca-central-1`). The app handles medical feedback data, including audio file uploads that go through a 30-60 second processing pipeline. Canadian data residency is strongly preferred. Budget target: free tier or under $20/month for pilot.
 
 Next.js 16 shipped October 2025, with 16.2 released March 2026. All major hosting platforms support it.
 

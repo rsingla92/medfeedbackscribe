@@ -1,7 +1,7 @@
 {
-  "name": "MedScribe",
-  "short_name": "MedScribe",
-  "description": "Capture feedback. Skip the forms.",
+  "name": "Debrief",
+  "short_name": "Debrief",
+  "description": "Talk first. Forms second.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FAFAF9",

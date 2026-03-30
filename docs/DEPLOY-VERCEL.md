@@ -1,4 +1,4 @@
-# MedScribe - Vercel Deployment Guide
+# Debrief - Vercel Deployment Guide
 
 ## Prerequisites
 

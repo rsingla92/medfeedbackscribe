@@ -1,4 +1,4 @@
-# MedScribe
+# Debrief by Whitecoat Prep
 
 AI-powered voice-to-assessment platform for medical trainee feedback.
 

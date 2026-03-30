@@ -1,4 +1,4 @@
-# Design System — MedScribe
+# Design System — Debrief
 
 ## Product Context
 - **What this is:** Voice-to-assessment platform that captures verbal preceptor feedback and auto-populates medical trainee assessment forms
@@ -13,7 +13,7 @@
 - **Reference sites:** Abridge (editorial warmth, serif headlines, restrained palette). NOT: One45/Acuity Insights (corporate, dated, institutional blue).
 
 ## Typography
-- **Display/Hero:** Instrument Serif — warm, editorial feel. Sets MedScribe apart from every sans-serif-only medical tool. Use for screen titles, hero text, stat values.
+- **Display/Hero:** Instrument Serif — warm, editorial feel. Sets Debrief apart from every sans-serif-only medical tool. Use for screen titles, hero text, stat values.
 - **Body/UI:** DM Sans — clean, excellent readability at small sizes, medical-grade clarity. Use for all body text, labels, buttons.
 - **Data/Tables:** Geist Mono — for timestamps, session IDs, confidence scores, durations. Use with `font-feature-settings: 'tnum'` for tabular numbers.
 - **Code:** Geist Mono

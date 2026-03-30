@@ -22,8 +22,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MedScribe",
-  description: "Capture feedback. Skip the forms.",
+  title: "Debrief",
+  description: "Talk first. Forms second.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "MedScribe",
+    title: "Debrief",
   },
 };
 

@@ -61,8 +61,8 @@ export default function AuthPage() {
       <div className="w-full max-w-sm space-y-8 text-center">
         {/* Branding */}
         <div className="space-y-2">
-          <h1 className="text-4xl font-[family-name:var(--font-display)] text-foreground">MedScribe</h1>
-          <p className="text-muted text-base">Capture feedback. Skip the forms.</p>
+          <h1 className="text-4xl font-[family-name:var(--font-display)] text-foreground">Debrief</h1>
+          <p className="text-muted text-base">Talk first. Forms second.</p>
         </div>
 
         {/* Sent */}

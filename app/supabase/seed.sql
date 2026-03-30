@@ -1,4 +1,4 @@
--- MedScribe Pilot Seed Data — UBC Family Medicine
+-- Debrief Pilot Seed Data — UBC Family Medicine
 
 -- Preceptors (from design doc — named rotation leads + pilot cohort)
 INSERT INTO preceptors (name, specialty, site) VALUES

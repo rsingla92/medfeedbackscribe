@@ -1,5 +1,5 @@
 /**
- * MedScribe Processing Pipeline (async)
+ * Debrief Processing Pipeline (async)
  *
  * Orchestrates the full flow from audio to structured assessment:
  *
