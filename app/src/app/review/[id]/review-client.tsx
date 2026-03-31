@@ -606,6 +606,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [assessments, setAssessments] = useState(session.assessments);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(session.status);
@@ -695,6 +696,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       for (const a of assessments) {
         await supabase
@@ -710,8 +712,8 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       }
       setHasUnsavedChanges(false);
     } catch (err) {
-      // Fail silently — user can retry
       console.error("Failed to save assessments:", err);
+      setSaveError("Failed to save changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -743,7 +745,6 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     } finally {
       setExporting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, hasUnsavedChanges, handleSave]);
 
   // ── Export CSV (One45) ────────────────────────────────────────────────────────
@@ -771,7 +772,6 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     } finally {
       setExportingCsv(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, hasUnsavedChanges, handleSave]);
 
   // ── Retry processing ─────────────────────────────────────────────────────────
@@ -876,6 +876,23 @@ export default function ReviewClient({ session }: { session: SessionData }) {
               className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save now"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="sticky top-[61px] z-20 border-b border-error bg-error-bg px-4 py-2">
+          <div className="mx-auto max-w-2xl flex items-center justify-between">
+            <span className="text-xs font-medium text-error">{saveError}</span>
+            <button
+              type="button"
+              onClick={() => setSaveError(null)}
+              className="text-xs font-semibold text-error hover:opacity-70 transition-opacity"
+              aria-label="Dismiss error"
+            >
+              Dismiss
             </button>
           </div>
         </div>

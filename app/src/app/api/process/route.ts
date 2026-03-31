@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runPipeline } from "@/lib/pipeline/index";
+import { isValidUUID } from "@/lib/uuid";
 
 const TIMEOUT_MS = 120_000;
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { sessionId } = body;
 
-    if (!sessionId || typeof sessionId !== "string") {
+    if (!sessionId || typeof sessionId !== "string" || !isValidUUID(sessionId)) {
       return Response.json(
         { error: "Missing or invalid sessionId" },
         { status: 400 }

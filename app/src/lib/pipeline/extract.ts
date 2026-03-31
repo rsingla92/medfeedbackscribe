@@ -112,7 +112,9 @@ export async function extractAssessment(
   // Extract JSON from response (may be wrapped in markdown code block)
   const jsonMatch = content.text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error("EXTRACTION_PARSE_ERROR");
+    throw new Error(
+      `EXTRACTION_PARSE_ERROR: no JSON found in response — preview: ${content.text.slice(0, 200)}`
+    );
   }
 
   try {

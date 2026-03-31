@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isValidUUID } from "@/lib/uuid";
 import ReactPDF from "@react-pdf/renderer";
 import {
   Document,
@@ -274,6 +275,11 @@ export async function POST(
 ) {
   try {
     const { id: sessionId } = await params;
+
+    if (!isValidUUID(sessionId)) {
+      return Response.json({ error: "Invalid session ID" }, { status: 400 });
+    }
+
     const supabase = await createClient();
 
     // Authenticate
@@ -354,25 +360,28 @@ export async function POST(
 
     const pdfBuffer = await ReactPDF.renderToBuffer(doc);
 
-    // Update exported_at timestamp for all assessments in this session
+    // Build a safe filename (truncate to avoid OS filename length limits)
+    const safeName = formTemplate.name
+      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .trim()
+      .slice(0, 50);
+    const dateStr = new Date(session.created_at)
+      .toISOString()
+      .slice(0, 10);
+    const filename = `${safeName}-${dateStr}.pdf`;
+
+    // Mark as exported in DB before returning the file so the status is always
+    // persisted even if the client disconnects mid-download.
     const assessmentIds = assessments.map((a) => a.id);
     await supabase
       .from("assessments")
       .update({ exported_at: new Date().toISOString() })
       .in("id", assessmentIds);
 
-    // Update session status to exported
     await supabase
       .from("sessions")
       .update({ status: "exported" })
       .eq("id", sessionId);
-
-    // Build a safe filename
-    const safeName = formTemplate.name.replace(/[^a-zA-Z0-9-_ ]/g, "").trim();
-    const dateStr = new Date(session.created_at)
-      .toISOString()
-      .slice(0, 10);
-    const filename = `${safeName}-${dateStr}.pdf`;
 
     return new Response(new Uint8Array(pdfBuffer), {
       status: 200,

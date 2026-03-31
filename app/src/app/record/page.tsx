@@ -389,16 +389,15 @@ export default function RecordPage() {
 
       if (recordingErr) throw recordingErr;
 
-      // Trigger processing pipeline
-      try {
-        await fetch("/api/process", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
-        });
-      } catch {
-        // Non-fatal: pipeline can be retried
-      }
+      // Trigger processing pipeline (non-blocking — failure is surfaced as
+      // "processing_failed" status on the review page where the user can retry)
+      fetch("/api/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).catch((err) => {
+        console.warn("Pipeline trigger request failed — user can retry from the review page:", err);
+      });
 
       // Redirect to home with success toast
       router.push("/?toast=recording_submitted");
