@@ -190,15 +190,23 @@ export async function POST(
     // Mark as exported in DB before returning the file so the status is always
     // persisted even if the client disconnects mid-download.
     const assessmentIds = assessments.map((a) => a.id);
-    await supabase
+    const { error: assessmentUpdateError } = await supabase
       .from("assessments")
       .update({ exported_at: new Date().toISOString() })
       .in("id", assessmentIds);
 
-    await supabase
+    if (assessmentUpdateError) {
+      throw new Error(`Failed to record export timestamp: ${assessmentUpdateError.message}`);
+    }
+
+    const { error: sessionUpdateError } = await supabase
       .from("sessions")
       .update({ status: "exported" })
       .eq("id", sessionId);
+
+    if (sessionUpdateError) {
+      throw new Error(`Failed to update session status: ${sessionUpdateError.message}`);
+    }
 
     return new Response(csv, {
       status: 200,

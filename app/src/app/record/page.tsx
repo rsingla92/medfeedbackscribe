@@ -389,8 +389,9 @@ export default function RecordPage() {
 
       if (recordingErr) throw recordingErr;
 
-      // Trigger processing pipeline (non-blocking — failure is surfaced as
-      // "processing_failed" status on the review page where the user can retry)
+      // Trigger processing pipeline (non-blocking). If this request fails (e.g.
+      // network/offline), the session remains in "uploading" until the user
+      // opens the review page and retries processing there.
       fetch("/api/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

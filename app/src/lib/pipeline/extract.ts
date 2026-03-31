@@ -112,9 +112,14 @@ export async function extractAssessment(
   // Extract JSON from response (may be wrapped in markdown code block)
   const jsonMatch = content.text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error(
-      `EXTRACTION_PARSE_ERROR: no JSON found in response — preview: ${content.text.slice(0, 200)}`
+    // Log a preview of the response to server logs for debugging, but do not
+    // include it in the thrown error message since error.message may be
+    // persisted to pipeline_logs and the response could contain PHI.
+    console.error(
+      "EXTRACTION_PARSE_ERROR: no JSON found in response — preview:",
+      content.text.slice(0, 200)
     );
+    throw new Error("EXTRACTION_PARSE_ERROR: no JSON found in response");
   }
 
   try {
@@ -143,7 +148,12 @@ export async function extractAssessment(
     };
   } catch (e) {
     if (e instanceof SyntaxError) {
-      throw new Error("EXTRACTION_PARSE_ERROR");
+      // Log the snippet to server logs only — don't store it in the error message.
+      console.error(
+        "EXTRACTION_PARSE_ERROR: invalid JSON — preview:",
+        jsonMatch[0].slice(0, 200)
+      );
+      throw new Error("EXTRACTION_PARSE_ERROR: invalid JSON");
     }
     throw e;
   }
