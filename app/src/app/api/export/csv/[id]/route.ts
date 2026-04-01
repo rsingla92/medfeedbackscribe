@@ -182,10 +182,11 @@ export async function POST(
       .replace(/[^a-zA-Z0-9-_ ]/g, "")
       .trim()
       .slice(0, 50);
+    const effectiveName = safeName || "export";
     const dateStr = (
       session.date ?? new Date(session.created_at).toISOString().slice(0, 10)
     );
-    const filename = `${safeName}-${dateStr}-one45.csv`;
+    const filename = `${effectiveName}-${dateStr}-one45.csv`;
 
     // Mark as exported in DB before returning the file so the status is always
     // persisted even if the client disconnects mid-download.
