@@ -205,6 +205,11 @@ export async function POST(
       .eq("id", sessionId);
 
     if (sessionUpdateError) {
+      // assessments.exported_at was already written above; log the partial state
+      // so it can be reconciled manually before failing the request.
+      console.error(
+        `Partial export state: assessments marked exported but session ${sessionId} status update failed — ${sessionUpdateError.message}`
+      );
       throw new Error(`Failed to update session status: ${sessionUpdateError.message}`);
     }
 

@@ -396,6 +396,8 @@ export default function RecordPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
+        // keepalive improves reliability across route transitions / page unload
+        keepalive: true,
       }).catch((err) => {
         console.warn("Pipeline trigger request failed — user can retry from the review page:", err);
       });
