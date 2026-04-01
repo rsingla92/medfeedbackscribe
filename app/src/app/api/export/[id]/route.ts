@@ -365,10 +365,11 @@ export async function POST(
       .replace(/[^a-zA-Z0-9-_ ]/g, "")
       .trim()
       .slice(0, 50);
+    const effectiveName = safeName || "export";
     const dateStr = new Date(session.created_at)
       .toISOString()
       .slice(0, 10);
-    const filename = `${safeName}-${dateStr}.pdf`;
+    const filename = `${effectiveName}-${dateStr}.pdf`;
 
     // Mark as exported in DB before returning the file so the status is always
     // persisted even if the client disconnects mid-download.
