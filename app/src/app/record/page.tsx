@@ -419,16 +419,40 @@ export default function RecordPage() {
 
       if (recordingErr) throw recordingErr;
 
-      // Trigger processing pipeline
-      try {
-        await fetch("/api/process", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+      // Trigger processing pipeline (non-blocking). If this request fails (e.g.
+      // network/offline), the session remains in "uploading" until the user
+      // opens the review page and retries processing there.
+      fetch("/api/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+        // keepalive improves reliability across route transitions / page unload
+        keepalive: true,
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            let details = "";
+            try {
+              const text = await res.text();
+              if (text) {
+                details = ` Response body: ${text}`;
+              }
+            } catch {
+              // ignore body read errors
+            }
+            console.warn(
+              `Pipeline trigger responded with non-OK status (${res.status} ${res.statusText}).` +
+                " User can retry from the review page." +
+                details
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn(
+            "Pipeline trigger request failed — user can retry from the review page:",
+            err
+          );
         });
-      } catch {
-        // Non-fatal: pipeline can be retried
-      }
 
       // Redirect to home with success toast
       router.push("/?toast=recording_submitted");

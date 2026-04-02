@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isValidUUID } from "@/lib/uuid";
 
 // ── CSV Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,11 @@ export async function POST(
 ) {
   try {
     const { id: sessionId } = await params;
+
+    if (!isValidUUID(sessionId)) {
+      return Response.json({ error: "Invalid session ID" }, { status: 400 });
+    }
+
     const supabase = await createClient();
 
     // Authenticate
@@ -171,25 +177,42 @@ export async function POST(
       "\n"
     );
 
-    // Update exported_at timestamp
+    // Build filename (truncate to avoid OS filename length limits)
+    const safeName = formTemplate.name
+      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .trim()
+      .slice(0, 50);
+    const effectiveName = safeName || "export";
+    const dateStr = (
+      session.date ?? new Date(session.created_at).toISOString().slice(0, 10)
+    );
+    const filename = `${effectiveName}-${dateStr}-one45.csv`;
+
+    // Mark as exported in DB before returning the file so the status is always
+    // persisted even if the client disconnects mid-download.
     const assessmentIds = assessments.map((a) => a.id);
-    await supabase
+    const { error: assessmentUpdateError } = await supabase
       .from("assessments")
       .update({ exported_at: new Date().toISOString() })
       .in("id", assessmentIds);
 
-    // Update session status to exported
-    await supabase
+    if (assessmentUpdateError) {
+      throw new Error(`Failed to record export timestamp: ${assessmentUpdateError.message}`);
+    }
+
+    const { error: sessionUpdateError } = await supabase
       .from("sessions")
       .update({ status: "exported" })
       .eq("id", sessionId);
 
-    // Build filename
-    const safeName = formTemplate.name.replace(/[^a-zA-Z0-9-_ ]/g, "").trim();
-    const dateStr = (
-      session.date ?? new Date(session.created_at).toISOString().slice(0, 10)
-    );
-    const filename = `${safeName}-${dateStr}-one45.csv`;
+    if (sessionUpdateError) {
+      // assessments.exported_at was already written above; log the partial state
+      // so it can be reconciled manually before failing the request.
+      console.error(
+        `Partial export state: assessments marked exported but session ${sessionId} status update failed — ${sessionUpdateError.message}`
+      );
+      throw new Error(`Failed to update session status: ${sessionUpdateError.message}`);
+    }
 
     return new Response(csv, {
       status: 200,

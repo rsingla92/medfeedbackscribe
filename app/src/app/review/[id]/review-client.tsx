@@ -606,6 +606,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [assessments, setAssessments] = useState(session.assessments);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(session.status);
@@ -693,11 +694,12 @@ export default function ReviewClient({ session }: { session: SessionData }) {
 
   // ── Save all changes ─────────────────────────────────────────────────────────
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (): Promise<boolean> => {
     setSaving(true);
+    setSaveError(null);
     try {
       for (const a of assessments) {
-        await supabase
+        const { error } = await supabase
           .from("assessments")
           .update({
             structured_fields: a.structured_fields,
@@ -707,11 +709,14 @@ export default function ReviewClient({ session }: { session: SessionData }) {
             coaching_consider: a.coaching_consider,
           })
           .eq("id", a.id);
+        if (error) throw error;
       }
       setHasUnsavedChanges(false);
+      return true;
     } catch (err) {
-      // Fail silently — user can retry
       console.error("Failed to save assessments:", err);
+      setSaveError("Failed to save changes. Please try again.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -723,8 +728,11 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const handleExport = useCallback(async () => {
     setExporting(true);
     try {
-      // Save any unsaved changes first
-      if (hasUnsavedChanges) await handleSave();
+      // Save any unsaved changes first; abort export if save failed
+      if (hasUnsavedChanges) {
+        const saved = await handleSave();
+        if (!saved) return;
+      }
 
       const res = await fetch(`/api/export/${session.id}`, { method: "POST" });
       if (!res.ok) throw new Error("Export failed");
@@ -743,7 +751,6 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     } finally {
       setExporting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, hasUnsavedChanges, handleSave]);
 
   // ── Export CSV (One45) ────────────────────────────────────────────────────────
@@ -751,8 +758,11 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const handleExportCsv = useCallback(async () => {
     setExportingCsv(true);
     try {
-      // Save any unsaved changes first
-      if (hasUnsavedChanges) await handleSave();
+      // Save any unsaved changes first; abort export if save failed
+      if (hasUnsavedChanges) {
+        const saved = await handleSave();
+        if (!saved) return;
+      }
 
       const res = await fetch(`/api/export/csv/${session.id}`, { method: "POST" });
       if (!res.ok) throw new Error("CSV export failed");
@@ -771,7 +781,6 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     } finally {
       setExportingCsv(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, hasUnsavedChanges, handleSave]);
 
   // ── Retry processing ─────────────────────────────────────────────────────────
@@ -876,6 +885,25 @@ export default function ReviewClient({ session }: { session: SessionData }) {
               className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save now"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Save error banner — sits below the unsaved-changes banner when both are visible */}
+      {saveError && (
+        <div
+          className={`sticky z-20 border-b border-error bg-error-bg px-4 py-2 ${hasUnsavedChanges ? "top-[93px]" : "top-[61px]"}`}
+        >
+          <div className="mx-auto max-w-2xl flex items-center justify-between">
+            <span className="text-xs font-medium text-error">{saveError}</span>
+            <button
+              type="button"
+              onClick={() => setSaveError(null)}
+              className="text-xs font-semibold text-error hover:opacity-70 transition-opacity"
+              aria-label="Dismiss error"
+            >
+              Dismiss
             </button>
           </div>
         </div>

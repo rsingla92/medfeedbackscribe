@@ -112,7 +112,12 @@ export async function extractAssessment(
   // Extract JSON from response (may be wrapped in markdown code block)
   const jsonMatch = content.text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error("EXTRACTION_PARSE_ERROR");
+    // Log only non-content metadata — the response may contain PHI if PHI
+    // scrubbing fell back to transcript_raw, so we must not log its contents.
+    console.error(
+      `EXTRACTION_PARSE_ERROR: no JSON found in response (response length: ${content.text.length})`
+    );
+    throw new Error("EXTRACTION_PARSE_ERROR: no JSON found in response");
   }
 
   try {
@@ -141,7 +146,11 @@ export async function extractAssessment(
     };
   } catch (e) {
     if (e instanceof SyntaxError) {
-      throw new Error("EXTRACTION_PARSE_ERROR");
+      // Log only length metadata — the matched JSON fragment may contain PHI.
+      console.error(
+        `EXTRACTION_PARSE_ERROR: invalid JSON (fragment length: ${jsonMatch[0].length})`
+      );
+      throw new Error("EXTRACTION_PARSE_ERROR: invalid JSON");
     }
     throw e;
   }
