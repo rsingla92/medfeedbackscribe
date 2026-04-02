@@ -205,6 +205,12 @@ export default function RecordPage() {
   const [isOffline, setIsOffline] = useState(false);
   const [offlineBlob, setOfflineBlob] = useState<Blob | null>(null);
 
+  // Inline add preceptor
+  const [showAddPreceptor, setShowAddPreceptor] = useState(false);
+  const [newPreceptorName, setNewPreceptorName] = useState("");
+  const [newPreceptorEmail, setNewPreceptorEmail] = useState("");
+  const [addingPreceptor, setAddingPreceptor] = useState(false);
+
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -272,6 +278,30 @@ export default function RecordPage() {
   const selectedPreceptorObj = preceptors.find(
     (p) => p.id === selectedPreceptor
   );
+
+  // ── Add preceptor inline ─────────────────────────────────────────────────────
+
+  const handleAddPreceptor = useCallback(async () => {
+    if (!newPreceptorName.trim()) return;
+    setAddingPreceptor(true);
+
+    const { data, error: err } = await supabase
+      .from("preceptors")
+      .insert({
+        name: newPreceptorName.trim(),
+        email: newPreceptorEmail.trim() || null,
+      })
+      .select("id, name, email")
+      .single();
+
+    if (!err && data) {
+      setPreceptors((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setShowAddPreceptor(false);
+      setNewPreceptorName("");
+      setNewPreceptorEmail("");
+    }
+    setAddingPreceptor(false);
+  }, [supabase, newPreceptorName, newPreceptorEmail]);
 
   // ── Start recording ──────────────────────────────────────────────────────────
 
@@ -513,6 +543,55 @@ export default function RecordPage() {
                       </button>
                     ))}
                   </div>
+                  {/* Quick-add preceptor */}
+                  {!showAddPreceptor ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPreceptor(true)}
+                      className="mt-3 w-full text-left px-4 py-3 rounded-lg border border-dashed border-accent/40 text-sm text-accent font-medium active:bg-accent-light flex items-center gap-2"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Add new preceptor
+                    </button>
+                  ) : (
+                    <div className="mt-3 rounded-lg border border-border bg-surface p-4 space-y-3">
+                      <input
+                        type="text"
+                        value={newPreceptorName}
+                        onChange={(e) => setNewPreceptorName(e.target.value)}
+                        placeholder="Dr. Name"
+                        autoFocus
+                        className="w-full rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light"
+                      />
+                      <input
+                        type="email"
+                        value={newPreceptorEmail}
+                        onChange={(e) => setNewPreceptorEmail(e.target.value)}
+                        placeholder="Email (optional)"
+                        className="w-full rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setShowAddPreceptor(false); setNewPreceptorName(""); setNewPreceptorEmail(""); }}
+                          className="flex-1 rounded-[var(--radius-md)] border border-border px-3 py-2 text-xs font-semibold text-foreground"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddPreceptor}
+                          disabled={addingPreceptor || !newPreceptorName.trim()}
+                          className="flex-1 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          {addingPreceptor ? "Adding..." : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <button type="button" onClick={() => { setSelectedRotation(""); setStep("pick-rotation"); }} className="mt-3 text-sm text-accent">
                     &larr; Back to rotations
                   </button>
