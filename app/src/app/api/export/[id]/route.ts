@@ -296,7 +296,7 @@ export async function POST(
     const { data: session, error: sessionError } = await supabase
       .from("sessions")
       .select(
-        "id, user_id, form_template_id, preceptor_id, created_at, preceptor:preceptors(name, email), rotation:rotations(name)"
+        "id, user_id, date, form_template_id, preceptor_id, created_at, preceptor:preceptors(name, email), rotation:rotations(name)"
       )
       .eq("id", sessionId)
       .single();
@@ -343,13 +343,21 @@ export async function POST(
     const preceptor = Array.isArray(session.preceptor) ? session.preceptor[0] : session.preceptor;
     const rotation = Array.isArray(session.rotation) ? session.rotation[0] : session.rotation;
 
+    // Fetch resident profile name
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    const residentName = profile?.full_name ?? user.email ?? "Unknown";
+
     // Build PDF
     const meta: SessionMeta = {
       formName: formTemplate.name,
-      preceptorEmail: preceptor?.email ?? preceptor?.name ?? null,
-      residentEmail: user.email ?? "Unknown",
+      preceptorEmail: preceptor?.name ?? preceptor?.email ?? null,
+      residentEmail: residentName,
       rotation: rotation?.name ?? null,
-      date: new Date(session.created_at).toLocaleDateString("en-CA"),
+      date: session.date ?? new Date(session.created_at).toLocaleDateString("en-CA"),
     };
 
     const doc = buildPdfDocument(
@@ -369,7 +377,13 @@ export async function POST(
     const dateStr = new Date(session.created_at)
       .toISOString()
       .slice(0, 10);
-    const filename = `${effectiveName}-${dateStr}.pdf`;
+    const safePreceptor = (preceptor?.name ?? "")
+      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .trim()
+      .slice(0, 30);
+    const filename = safePreceptor
+      ? `${effectiveName}-${safePreceptor}-${dateStr}.pdf`
+      : `${effectiveName}-${dateStr}.pdf`;
 
     // Mark as exported in DB before returning the file so the status is always
     // persisted even if the client disconnects mid-download.

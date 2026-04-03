@@ -17,10 +17,12 @@ function ProcessingView({
   pipelineStep,
   onRetry,
   failed,
+  transcriptPreview,
 }: {
   pipelineStep: string | null;
   onRetry: () => void;
   failed: boolean;
+  transcriptPreview: string | null;
 }) {
   const steps = [
     { key: "stt", label: "Transcribing audio" },
@@ -143,6 +145,18 @@ function ProcessingView({
           );
         })}
       </div>
+
+      {/* Transcript preview */}
+      {transcriptPreview && (
+        <div className="w-full max-w-md space-y-2">
+          <p className="text-xs font-medium text-muted uppercase tracking-wider">Transcript Preview</p>
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 max-h-40 overflow-y-auto">
+            <p className="text-xs text-muted leading-relaxed whitespace-pre-wrap font-[family-name:var(--font-mono)]">
+              {transcriptPreview}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -612,6 +626,9 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [sessionStatus, setSessionStatus] = useState(session.status);
   const [pollingStep, setPollingStep] = useState(session.pipeline_step ?? null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [exportSuccess, setExportSuccess] = useState<"pdf" | "csv" | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
 
   // Security: only show PHI-scrubbed transcript. Never expose transcript_raw to client.
   const transcript = session.recording?.transcript_clean ?? null;
@@ -673,6 +690,19 @@ export default function ReviewClient({ session }: { session: SessionData }) {
 
       if (logs && logs.length > 0) {
         setPollingStep(logs[0].step);
+      }
+
+      // Fetch transcript preview once STT is done
+      if (!transcriptPreview) {
+        const { data: rec } = await supabase
+          .from("recordings")
+          .select("transcript_clean")
+          .eq("session_id", session.id)
+          .single();
+
+        if (rec?.transcript_clean) {
+          setTranscriptPreview(rec.transcript_clean);
+        }
       }
     }, 3000);
 
@@ -738,16 +768,22 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       if (!res.ok) throw new Error("Export failed");
 
       const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] ?? `assessment-${session.id}.pdf`;
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `assessment-${session.id}.pdf`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
 
       setSessionStatus("exported");
+      setExportSuccess("pdf");
     } catch (err) {
       console.error("Export failed:", err);
+      setExportError("PDF export failed. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -768,16 +804,22 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       if (!res.ok) throw new Error("CSV export failed");
 
       const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] ?? `assessment-${session.id}.csv`;
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `assessment-${session.id}-one45.csv`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
 
       setSessionStatus("exported");
+      setExportSuccess("csv");
     } catch (err) {
       console.error("CSV export failed:", err);
+      setExportError("CSV export failed. Please try again.");
     } finally {
       setExportingCsv(false);
     }
@@ -917,6 +959,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
             pipelineStep={pollingStep}
             onRetry={handleRetry}
             failed={sessionStatus === "processing_failed"}
+            transcriptPreview={transcriptPreview}
           />
         )}
 
@@ -954,6 +997,54 @@ export default function ReviewClient({ session }: { session: SessionData }) {
                 <p className="text-sm text-muted">
                   No assessments were generated for this session.
                 </p>
+              </div>
+            )}
+
+            {/* Export success banner */}
+            {exportSuccess && (
+              <div className="rounded-[var(--radius-lg)] border border-success/20 bg-success-bg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  <p className="text-sm font-semibold text-foreground">
+                    {exportSuccess === "pdf" ? "PDF" : "CSV"} exported successfully
+                  </p>
+                </div>
+                <p className="text-xs text-muted">
+                  The file has been downloaded. You can submit it to your program, re-export, or record another session.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setExportSuccess(null); router.push("/"); }}
+                    className="rounded-[var(--radius-md)] bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-accent-hover"
+                  >
+                    Back to Home
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/record")}
+                    className="rounded-[var(--radius-md)] border border-border px-4 py-2 text-xs font-semibold text-foreground hover:bg-border-light"
+                  >
+                    Record Another
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportSuccess(null)}
+                    className="rounded-[var(--radius-md)] border border-border px-4 py-2 text-xs font-semibold text-muted hover:bg-border-light"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Export error */}
+            {exportError && (
+              <div className="rounded-[var(--radius-md)] bg-error-bg p-3 flex items-center justify-between">
+                <p className="text-sm text-error">{exportError}</p>
+                <button type="button" onClick={() => setExportError(null)} className="text-xs text-error font-medium underline">Dismiss</button>
               </div>
             )}
 

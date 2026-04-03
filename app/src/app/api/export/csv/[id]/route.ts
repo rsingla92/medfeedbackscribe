@@ -70,6 +70,14 @@ export async function POST(
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Fetch resident profile name
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    const residentName = profile?.full_name ?? user.email ?? "Unknown";
+
     // Fetch assessments
     const { data: assessments, error: assessmentsError } = await supabase
       .from("assessments")
@@ -160,7 +168,7 @@ export async function POST(
       });
 
       return [
-        user.email ?? "Unknown",
+        residentName,
         preceptor?.name ?? preceptor?.email ?? "",
         rotation?.name ?? "",
         session.date ?? new Date(session.created_at).toISOString().slice(0, 10),
@@ -186,7 +194,13 @@ export async function POST(
     const dateStr = (
       session.date ?? new Date(session.created_at).toISOString().slice(0, 10)
     );
-    const filename = `${effectiveName}-${dateStr}-one45.csv`;
+    const safePreceptor = (preceptor?.name ?? "")
+      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .trim()
+      .slice(0, 30);
+    const filename = safePreceptor
+      ? `${effectiveName}-${safePreceptor}-${dateStr}.csv`
+      : `${effectiveName}-${dateStr}.csv`;
 
     // Mark as exported in DB before returning the file so the status is always
     // persisted even if the client disconnects mid-download.
