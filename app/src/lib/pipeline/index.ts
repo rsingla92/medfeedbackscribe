@@ -255,6 +255,18 @@ export async function runPipeline(
           results.push(`resident: ${sent ? "sent" : "failed"}`);
         }
 
+        // Email program admin (if configured via env var)
+        const adminEmail = process.env.PROGRAM_ADMIN_EMAIL;
+        if (adminEmail) {
+          const sent = await sendAssessmentNotification({
+            to: adminEmail,
+            recipientName: "Program Administrator",
+            role: "preceptor", // admin sees preceptor perspective
+            ...emailContext,
+          });
+          results.push(`admin: ${sent ? "sent" : "failed"}`);
+        }
+
         const allSent = results.every((r) => r.includes("sent"));
         await logStep(
           supabase,

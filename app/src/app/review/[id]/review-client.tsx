@@ -765,7 +765,10 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       }
 
       const res = await fetch(`/api/export/${session.id}`, { method: "POST" });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errBody.error ?? "Export failed");
+      }
 
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition");
@@ -783,7 +786,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       setExportSuccess("pdf");
     } catch (err) {
       console.error("Export failed:", err);
-      setExportError("PDF export failed. Please try again.");
+      setExportError(err instanceof Error ? err.message : "PDF export failed. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -801,7 +804,10 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       }
 
       const res = await fetch(`/api/export/csv/${session.id}`, { method: "POST" });
-      if (!res.ok) throw new Error("CSV export failed");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errBody.error ?? "CSV export failed");
+      }
 
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition");
@@ -819,7 +825,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       setExportSuccess("csv");
     } catch (err) {
       console.error("CSV export failed:", err);
-      setExportError("CSV export failed. Please try again.");
+      setExportError(err instanceof Error ? err.message : "CSV export failed. Please try again.");
     } finally {
       setExportingCsv(false);
     }
