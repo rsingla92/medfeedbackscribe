@@ -73,7 +73,7 @@ export default function PreceptorsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!formName.trim()) return;
+    if (!formName.trim() || !formEmail.trim()) return;
 
     setSaving(true);
     const payload = {
@@ -266,11 +266,12 @@ export default function PreceptorsPage() {
 
               <div>
                 <label htmlFor="p-email" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1">
-                  Email
+                  Email *
                 </label>
                 <input
                   id="p-email"
                   type="email"
+                  required
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   placeholder="jane.smith@hospital.edu"
@@ -317,7 +318,7 @@ export default function PreceptorsPage() {
               </button>
               <button
                 type="submit"
-                disabled={saving || !formName.trim()}
+                disabled={saving || !formName.trim() || !formEmail.trim()}
                 className="flex-1 rounded-[var(--radius-md)] bg-accent px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving..." : editingId ? "Save Changes" : "Add Preceptor"}

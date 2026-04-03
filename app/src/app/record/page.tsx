@@ -658,7 +658,7 @@ export default function RecordPage() {
                         type="email"
                         value={newPreceptorEmail}
                         onChange={(e) => setNewPreceptorEmail(e.target.value)}
-                        placeholder="Email (optional)"
+                        placeholder="Email (required for notifications)"
                         className="w-full rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light"
                       />
                       <div className="flex gap-2">
@@ -672,7 +672,7 @@ export default function RecordPage() {
                         <button
                           type="button"
                           onClick={handleAddPreceptor}
-                          disabled={addingPreceptor || !newPreceptorName.trim()}
+                          disabled={addingPreceptor || !newPreceptorName.trim() || !newPreceptorEmail.trim()}
                           className="flex-1 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
                         >
                           {addingPreceptor ? "Adding..." : "Add"}
