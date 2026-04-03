@@ -148,6 +148,21 @@ export async function POST(request: NextRequest) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
     console.error("Pipeline trigger failed:", message);
+
+    // Update session status so user sees failure (not stuck in "processing")
+    try {
+      const body = await request.clone().json().catch(() => null);
+      if (body?.sessionId) {
+        const supabaseForUpdate = await createClient();
+        await supabaseForUpdate
+          .from("sessions")
+          .update({ status: "processing_failed" })
+          .eq("id", body.sessionId);
+      }
+    } catch {
+      // Best-effort status update
+    }
+
     return Response.json({ error: message }, { status: 500 });
   }
 }
