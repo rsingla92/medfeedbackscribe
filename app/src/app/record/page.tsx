@@ -83,15 +83,21 @@ function WaveformVisualizer({ analyser, isPaused }: { analyser: AnalyserNode | n
 
 // ── Timer Display ──────────────────────────────────────────────────────────────
 
-function RecordingTimer({ startTime }: { startTime: number }) {
+function RecordingTimer({ startTime, isPaused }: { startTime: number; isPaused: boolean }) {
   const [elapsed, setElapsed] = useState(0);
+  const pausedAtRef = useRef(0);
 
   useEffect(() => {
+    if (isPaused) {
+      pausedAtRef.current = elapsed;
+      return;
+    }
+    const resumeBase = Date.now() - pausedAtRef.current * 1000;
     const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+      setElapsed(Math.floor((Date.now() - resumeBase) / 1000));
     }, 200);
     return () => clearInterval(interval);
-  }, [startTime]);
+  }, [startTime, isPaused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const minutes = Math.floor(elapsed / 60);
   const seconds = elapsed % 60;
@@ -519,7 +525,7 @@ export default function RecordPage() {
       setUploadError(
         err instanceof Error ? err.message : "Upload failed. Please try again."
       );
-      setStep("recording");
+      setStep("pick-rotation");
     }
   }, [supabase, selectedPreceptor, selectedRotation, selectedFormTemplate, router]);
 
@@ -735,7 +741,7 @@ export default function RecordPage() {
               <WaveformVisualizer analyser={analyser} isPaused={isPaused} />
 
               {/* Timer */}
-              <RecordingTimer startTime={startTimeRef.current} />
+              <RecordingTimer startTime={startTimeRef.current} isPaused={isPaused} />
 
               {/* Preceptor label */}
               <p className="text-sm text-muted text-center">
