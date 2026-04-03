@@ -25,35 +25,59 @@ interface FormTemplate {
 
 type Step = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "uploading" | "submitted";
 
-// ── Waveform Visualization ─────────────────────────────────────────────────────
+// ── Real Audio Waveform ───────────────────────────────────────────────────────
 
-function WaveformVisualizer({ isRecording }: { isRecording: boolean }) {
-  const barCount = 32;
+function WaveformVisualizer({ analyser, isPaused }: { analyser: AnalyserNode | null; isPaused: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !analyser) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const barCount = 40;
+    const barWidth = 3;
+    const gap = 2;
+
+    function draw() {
+      rafRef.current = requestAnimationFrame(draw);
+      analyser!.getByteFrequencyData(dataArray);
+
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      const centerY = canvas!.height / 2;
+
+      for (let i = 0; i < barCount; i++) {
+        // Sample from the frequency data spread across the range
+        const dataIndex = Math.floor((i / barCount) * bufferLength * 0.6);
+        const value = isPaused ? 0 : dataArray[dataIndex];
+        const barHeight = Math.max(4, (value / 255) * centerY * 1.6);
+
+        const x = (canvas!.width - barCount * (barWidth + gap)) / 2 + i * (barWidth + gap);
+
+        ctx!.fillStyle = `rgba(217, 119, 6, ${0.4 + (value / 255) * 0.6})`;
+        ctx!.beginPath();
+        ctx!.roundRect(x, centerY - barHeight / 2, barWidth, barHeight, 1.5);
+        ctx!.fill();
+      }
+    }
+
+    draw();
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [analyser, isPaused]);
+
   return (
-    <div
-      className="flex items-center justify-center gap-[3px] h-32 px-4"
+    <canvas
+      ref={canvasRef}
+      width={240}
+      height={128}
+      className="h-32 w-60"
       aria-hidden="true"
-    >
-      {Array.from({ length: barCount }).map((_, i) => (
-        <div
-          key={i}
-          className="w-[3px] rounded-full bg-accent"
-          style={{
-            height: isRecording ? undefined : "4px",
-            animation: isRecording
-              ? `waveform ${0.4 + Math.random() * 0.6}s ease-in-out ${Math.random() * 0.5}s infinite alternate`
-              : "none",
-            opacity: isRecording ? 0.7 + Math.random() * 0.3 : 0.3,
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes waveform {
-          0% { height: 8px; }
-          100% { height: ${60 + Math.random() * 60}px; }
-        }
-      `}</style>
-    </div>
+    />
   );
 }
 
@@ -200,6 +224,7 @@ export default function RecordPage() {
   // Flow state
   const [step, setStep] = useState<Step>("pick-rotation");
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
@@ -216,6 +241,9 @@ export default function RecordPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   // ── Fetch setup data ─────────────────────────────────────────────────────────
@@ -318,6 +346,17 @@ export default function RecordPage() {
       });
       streamRef.current = stream;
 
+      // Set up Web Audio analyser for real waveform
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const node = audioCtx.createAnalyser();
+      node.fftSize = 256;
+      node.smoothingTimeConstant = 0.7;
+      source.connect(node);
+      audioCtxRef.current = audioCtx;
+      analyserRef.current = node;
+      setAnalyser(node);
+
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : "audio/webm";
@@ -332,6 +371,7 @@ export default function RecordPage() {
 
       recorder.start(1000); // collect chunks every second
       startTimeRef.current = Date.now();
+      setIsPaused(false);
       setStep("recording");
     } catch (err) {
       const message =
@@ -341,6 +381,21 @@ export default function RecordPage() {
             ? "No microphone found. Please connect a microphone and try again."
             : "Could not start recording. Please check your microphone.";
       setMicError(message);
+    }
+  }, []);
+
+  // ── Pause / Resume recording ─────────────────────────────────────────────────
+
+  const togglePause = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    if (recorder.state === "recording") {
+      recorder.pause();
+      setIsPaused(true);
+    } else if (recorder.state === "paused") {
+      recorder.resume();
+      setIsPaused(false);
     }
   }, []);
 
@@ -363,8 +418,10 @@ export default function RecordPage() {
       recorder.stop();
     });
 
-    // Stop all tracks
+    // Stop all tracks and audio context
     streamRef.current?.getTracks().forEach((t) => t.stop());
+    audioCtxRef.current?.close();
+    setAnalyser(null);
 
     // Handle offline
     if (!navigator.onLine) {
@@ -666,16 +723,16 @@ export default function RecordPage() {
               {/* Live indicator */}
               <div className="flex items-center gap-2">
                 <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-error" />
+                  {!isPaused && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75" />}
+                  <span className={`relative inline-flex h-3 w-3 rounded-full ${isPaused ? "bg-warning" : "bg-error"}`} />
                 </span>
-                <span className="text-sm font-medium text-error uppercase tracking-wider">
-                  Recording
+                <span className={`text-sm font-medium uppercase tracking-wider ${isPaused ? "text-warning" : "text-error"}`}>
+                  {isPaused ? "Paused" : "Recording"}
                 </span>
               </div>
 
-              {/* Waveform */}
-              <WaveformVisualizer isRecording={true} />
+              {/* Real audio waveform */}
+              <WaveformVisualizer analyser={analyser} isPaused={isPaused} />
 
               {/* Timer */}
               <RecordingTimer startTime={startTimeRef.current} />
@@ -685,18 +742,42 @@ export default function RecordPage() {
                 {selectedPreceptorObj?.name}
               </p>
 
-              {/* Stop button */}
-              <button
-                type="button"
-                onClick={() => setShowStopConfirm(true)}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-error text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-                aria-label="Stop recording"
-              >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              </button>
-              <span className="text-xs text-subtle">Tap to stop</span>
+              {/* Controls: Pause + Stop */}
+              <div className="flex items-center gap-6">
+                {/* Pause / Resume */}
+                <button
+                  type="button"
+                  onClick={togglePause}
+                  className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-border bg-surface text-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
+                  aria-label={isPaused ? "Resume recording" : "Pause recording"}
+                >
+                  {isPaused ? (
+                    <svg className="h-6 w-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5.14v14l11-7-11-7z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <rect x="6" y="4" width="4" height="16" rx="1" />
+                      <rect x="14" y="4" width="4" height="16" rx="1" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Stop */}
+                <button
+                  type="button"
+                  onClick={() => setShowStopConfirm(true)}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-error text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  aria-label="Stop recording"
+                >
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                </button>
+              </div>
+              <span className="text-xs text-subtle">
+                {isPaused ? "Tap play to resume" : "Tap stop to finish"}
+              </span>
             </div>
           )}
 
