@@ -24,7 +24,18 @@ export async function GET(request: Request) {
       await supabase.auth.exchangeCodeForSession(code);
 
     if (!exchangeError) {
-      // Successful authentication — redirect to home
+      // Check if user has a profile (new user vs returning)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .single();
+
+      if (!profile) {
+        // New user — redirect to onboarding
+        return NextResponse.redirect(new URL("/onboarding", origin));
+      }
+
+      // Returning user — redirect to home
       return NextResponse.redirect(new URL("/", origin));
     }
 

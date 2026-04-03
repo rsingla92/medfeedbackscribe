@@ -20,7 +20,23 @@ export default async function HomePage() {
     status: SessionStatus;
   }[] = [];
 
+  let profileName = "";
+
   if (user) {
+    // Check for profile (redirect to onboarding if missing)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile) {
+      const { redirect } = await import("next/navigation");
+      redirect("/onboarding");
+      return; // unreachable but satisfies TypeScript
+    }
+
+    profileName = profile.full_name;
     const { data } = await supabase
       .from("sessions")
       .select("id, status, created_at, date, preceptor:preceptors(name), rotation:rotations(name)")
@@ -78,6 +94,7 @@ export default async function HomePage() {
     <HomeClient
       initialSessions={sessions}
       userEmail={user.email ?? ""}
+      userName={profileName}
     />
   );
 }

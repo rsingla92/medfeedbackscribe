@@ -856,7 +856,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
               Review Assessment
             </h1>
             <p className="text-xs text-muted truncate">
-              Dr. {session.preceptor?.name} &rarr; You &middot;{" "}
+              {session.preceptor?.name} &rarr; You &middot;{" "}
               {session.rotation?.name} &middot; {formattedDate}
             </p>
           </div>

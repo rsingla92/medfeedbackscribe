@@ -23,7 +23,7 @@ interface FormTemplate {
   extraction_mode: "multi" | "single";
 }
 
-type Step = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "uploading";
+type Step = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "uploading" | "submitted";
 
 // ── Waveform Visualization ─────────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ function ConsentModal({
             Recording Consent
           </h2>
           <p className="text-sm text-muted leading-relaxed">
-            Dr. {preceptorName} has agreed to have this feedback session
+            {preceptorName} has agreed to have this feedback session
             recorded. The audio will be transcribed, de-identified, and used to
             populate your assessment form.
           </p>
@@ -114,7 +114,7 @@ function ConsentModal({
             className="mt-0.5 h-5 w-5 rounded-[var(--radius-sm)] border-border text-accent accent-[var(--accent)]"
           />
           <span className="text-sm text-foreground leading-snug">
-            I confirm that Dr. {preceptorName} has consented to this recording
+            I confirm that {preceptorName} has consented to this recording
             and understands how it will be used.
           </span>
         </label>
@@ -204,6 +204,7 @@ export default function RecordPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [offlineBlob, setOfflineBlob] = useState<Blob | null>(null);
+  const [submittedSessionId, setSubmittedSessionId] = useState<string | null>(null);
 
   // Inline add preceptor
   const [showAddPreceptor, setShowAddPreceptor] = useState(false);
@@ -454,13 +455,14 @@ export default function RecordPage() {
           );
         });
 
-      // Redirect to home with success toast
-      router.push("/?toast=recording_submitted");
+      // Show submitted confirmation
+      setSubmittedSessionId(sessionId);
+      setStep("submitted");
     } catch (err) {
       setUploadError(
         err instanceof Error ? err.message : "Upload failed. Please try again."
       );
-      setStep("pick-rotation");
+      setStep("recording");
     }
   }, [supabase, selectedPreceptor, selectedRotation, selectedFormTemplate, router]);
 
@@ -585,7 +587,7 @@ export default function RecordPage() {
                         type="text"
                         value={newPreceptorName}
                         onChange={(e) => setNewPreceptorName(e.target.value)}
-                        placeholder="Dr. Name"
+                        placeholder="Dr. Jane Smith"
                         autoFocus
                         className="w-full rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light"
                       />
@@ -680,7 +682,7 @@ export default function RecordPage() {
 
               {/* Preceptor label */}
               <p className="text-sm text-muted text-center">
-                Dr. {selectedPreceptorObj?.name}
+                {selectedPreceptorObj?.name}
               </p>
 
               {/* Stop button */}
@@ -738,6 +740,88 @@ export default function RecordPage() {
                   Your recording is being uploaded and will be processed shortly.
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* ── Submitted Confirmation ────────────────────────────────── */}
+          {step === "submitted" && submittedSessionId && (
+            <div className="flex flex-col items-center space-y-6 pt-8">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-bg">
+                <svg className="h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-xl font-semibold font-[family-name:var(--font-display)] text-foreground">
+                  Recording Submitted
+                </p>
+                <p className="text-sm text-muted max-w-xs">
+                  Your feedback is being transcribed and processed. This usually takes about a minute.
+                </p>
+              </div>
+
+              {/* Summary */}
+              <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted">Preceptor</span>
+                  <span className="font-medium text-foreground">{selectedPreceptorObj?.name}</span>
+                </div>
+                {selectedRotation && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted">Rotation</span>
+                    <span className="font-medium text-foreground">
+                      {rotations.find((r) => r.id === selectedRotation)?.name}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted">Form</span>
+                  <span className="font-medium text-foreground">
+                    {formTemplates.find((f) => f.id === selectedFormTemplate)?.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted">Status</span>
+                  <span className="inline-flex items-center gap-1.5 text-warning font-medium text-sm">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warning" />
+                    </span>
+                    Processing
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/review/${submittedSessionId}`)}
+                  className="w-full rounded-[var(--radius-md)] bg-accent px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                >
+                  View Assessment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/")}
+                  className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-border-light"
+                >
+                  Back to Home
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Error Display ─────────────────────────────────────────── */}
+          {(micError || uploadError) && step !== "submitted" && (
+            <div className="mt-4 rounded-[var(--radius-md)] border border-border bg-error-bg p-4 text-center space-y-2">
+              <p className="text-sm text-error font-medium">{micError || uploadError}</p>
+              <button
+                type="button"
+                onClick={() => { setMicError(null); setUploadError(null); }}
+                className="text-sm font-medium text-accent"
+              >
+                Dismiss
+              </button>
             </div>
           )}
         </div>

@@ -136,7 +136,7 @@ function SessionCard({ session }: { session: FeedbackSession }) {
 
 // ── Account Bar ───────────────────────────────────────────────────────────────
 
-function AccountBar({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+function AccountBar({ email, name, onSignOut }: { email: string; name: string; onSignOut: () => void }) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -149,7 +149,7 @@ function AccountBar({ email, onSignOut }: { email: string; onSignOut: () => void
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-light text-accent text-[10px] font-bold">
           {email[0].toUpperCase()}
         </div>
-        <span className="max-w-[160px] truncate">{email}</span>
+        <span className="max-w-[160px] truncate">{name || email}</span>
         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
@@ -181,9 +181,11 @@ function AccountBar({ email, onSignOut }: { email: string; onSignOut: () => void
 export function HomeClient({
   initialSessions,
   userEmail,
+  userName,
 }: {
   initialSessions: FeedbackSession[];
   userEmail: string;
+  userName: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -257,7 +259,7 @@ export function HomeClient({
             </h1>
             <p className="mt-1 text-sm text-muted">Talk first. Forms second.</p>
           </div>
-          <AccountBar email={userEmail} onSignOut={handleSignOut} />
+          <AccountBar email={userEmail} name={userName} onSignOut={handleSignOut} />
         </div>
       </header>
 
