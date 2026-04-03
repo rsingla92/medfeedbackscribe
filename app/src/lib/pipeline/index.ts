@@ -17,7 +17,7 @@
 import { transcribeAudio, type STTResult } from "./stt";
 import { scrubTranscript } from "./phi-scrub";
 import { extractAssessment, type ExtractionResult } from "./extract";
-import { sendPreceptorSummary } from "@/lib/email";
+import { sendAssessmentNotification } from "@/lib/email";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface PipelineConfig {
@@ -38,6 +38,11 @@ interface PipelineInput {
     competency_framework: string;
   };
   preceptorEmail?: string;
+  preceptorName?: string;
+  residentName?: string;
+  residentEmail?: string;
+  rotationName?: string | null;
+  sessionDate?: string;
 }
 
 async function logStep(
@@ -204,36 +209,69 @@ export async function runPipeline(
       .update({ status: "ready" })
       .eq("id", input.sessionId);
 
-    // === Step 5: Email Preceptor Summary (optional, non-blocking) ===
-    if (input.preceptorEmail) {
-      const emailStart = Date.now();
-      try {
-        // Build a summary from the first assessment's narrative
-        const summary = extraction.outputs
-          .map((o) => o.narrative_summary)
-          .filter(Boolean)
-          .join(" ");
+    // === Step 5: Email notifications (optional, non-blocking) ===
+    const emailStart = Date.now();
+    try {
+      const summary = extraction.outputs
+        .map((o) => o.narrative_summary)
+        .filter(Boolean)
+        .join(" ");
 
-        if (!process.env.RESEND_API_KEY) {
-          await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "RESEND_API_KEY not configured");
-        } else if (summary) {
-          const sent = await sendPreceptorSummary(input.preceptorEmail, summary);
-          await logStep(
-            supabase,
-            input.sessionId,
-            "email",
-            sent ? "completed" : "failed",
-            emailStart,
-            sent ? undefined : "Email send returned false"
-          );
-        } else {
-          await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "No narrative summary to send");
+      const firstOutput = extraction.outputs[0];
+      const emailContext = {
+        preceptorName: input.preceptorName ?? "Preceptor",
+        residentName: input.residentName ?? "Resident",
+        rotation: input.rotationName ?? null,
+        date: input.sessionDate ?? new Date().toLocaleDateString("en-CA"),
+        narrativeSummary: summary,
+        coachingDidWell: firstOutput?.coaching_did_well ?? null,
+        coachingConsider: firstOutput?.coaching_consider ?? null,
+      };
+
+      if (!process.env.RESEND_API_KEY) {
+        await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "RESEND_API_KEY not configured");
+      } else if (summary) {
+        const results: string[] = [];
+
+        // Email preceptor
+        if (input.preceptorEmail) {
+          const sent = await sendAssessmentNotification({
+            to: input.preceptorEmail,
+            recipientName: emailContext.preceptorName,
+            role: "preceptor",
+            ...emailContext,
+          });
+          results.push(`preceptor: ${sent ? "sent" : "failed"}`);
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Email error";
-        await logStep(supabase, input.sessionId, "email", "failed", emailStart, message);
-        // Non-fatal: email failure doesn't block assessment
+
+        // Email resident
+        if (input.residentEmail) {
+          const sent = await sendAssessmentNotification({
+            to: input.residentEmail,
+            recipientName: emailContext.residentName,
+            role: "resident",
+            ...emailContext,
+          });
+          results.push(`resident: ${sent ? "sent" : "failed"}`);
+        }
+
+        const allSent = results.every((r) => r.includes("sent"));
+        await logStep(
+          supabase,
+          input.sessionId,
+          "email",
+          allSent ? "completed" : "failed",
+          emailStart,
+          allSent ? undefined : results.join(", "),
+          { recipients: results }
+        );
+      } else {
+        await logStep(supabase, input.sessionId, "email", "skipped", emailStart, "No narrative summary to send");
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Email error";
+      await logStep(supabase, input.sessionId, "email", "failed", emailStart, message);
+      // Non-fatal: email failure doesn't block assessment
     }
   } catch (error) {
     // Pipeline failed — mark session

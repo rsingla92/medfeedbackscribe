@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const { data: session, error: sessionError } = await supabase
       .from("sessions")
       .select(
-        "id, user_id, form_template_id, preceptor_id, status"
+        "id, user_id, form_template_id, preceptor_id, rotation_id, date, status"
       )
       .eq("id", sessionId)
       .single();
@@ -82,16 +82,40 @@ export async function POST(request: NextRequest) {
 
     const audioUrl = signedUrlData.signedUrl;
 
-    // Fetch preceptor email for notification
+    // Fetch preceptor info for notification
     let preceptorEmail: string | undefined;
+    let preceptorName: string | undefined;
     if (session.preceptor_id) {
       const { data: preceptor } = await supabase
         .from("preceptors")
-        .select("email")
+        .select("name, email")
         .eq("id", session.preceptor_id)
         .single();
       preceptorEmail = preceptor?.email ?? undefined;
+      preceptorName = preceptor?.name ?? undefined;
     }
+
+    // Fetch resident profile + rotation for email context
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    const residentName = profile?.full_name ?? user.email ?? "Resident";
+    const residentEmail = user.email ?? undefined;
+
+    // Fetch rotation name
+    let rotationName: string | null = null;
+    if (session.rotation_id) {
+      const { data: rotation } = await supabase
+        .from("rotations")
+        .select("name")
+        .eq("id", session.rotation_id)
+        .single();
+      rotationName = rotation?.name ?? null;
+    }
+
+    const sessionDate = session.date ?? new Date().toLocaleDateString("en-CA");
 
     // Fetch form template
     const { data: formTemplate, error: templateError } = await supabase
@@ -135,6 +159,11 @@ export async function POST(request: NextRequest) {
           competency_framework: formTemplate.competency_framework,
         },
         preceptorEmail,
+        preceptorName,
+        residentName,
+        residentEmail,
+        rotationName,
+        sessionDate,
       },
       {
         deepgramApiKey,
