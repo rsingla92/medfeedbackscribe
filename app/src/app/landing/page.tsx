@@ -391,17 +391,48 @@ function SiteFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto max-w-[960px] px-6 py-12 sm:py-16">
+        {/* Four-column link grid */}
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
 
-          {/* Column 1: Debrief */}
-          <div className="flex flex-col gap-3">
-            <DebriefWordmark />
-            <p className="text-sm text-muted leading-relaxed">
-              Talk first. Forms second.
+          {/* Column 1: Product */}
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Product
             </p>
-            <p className="text-xs text-subtle">
-              &copy; {new Date().getFullYear()} Whitecoat Prep. All rights reserved.
-            </p>
+            <ul className="flex flex-col gap-2">
+              <li>
+                <a
+                  href="#how-it-works"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  How it works
+                </a>
+              </li>
+              <li>
+                <Link
+                  href="/demo"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Demo
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/for-programs"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  For Programs
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Request a pilot
+                </a>
+              </li>
+            </ul>
           </div>
 
           {/* Column 2: Company */}
@@ -410,6 +441,14 @@ function SiteFooter() {
               Company
             </p>
             <ul className="flex flex-col gap-2">
+              <li>
+                <Link
+                  href="/about"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  About
+                </Link>
+              </li>
               <li>
                 <a
                   href="https://www.whitecoatprep.com"
@@ -422,19 +461,36 @@ function SiteFooter() {
               </li>
               <li>
                 <Link
-                  href="/about"
+                  href="/contact"
                   className="text-sm text-foreground hover:text-accent transition-colors"
                 >
-                  About
+                  Contact
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Resources */}
+          {/* Column 3: Trust */}
           <div>
             <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
-              Resources
+              Trust
+            </p>
+            <ul className="flex flex-col gap-2">
+              <li>
+                <Link
+                  href="/security"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Security and Compliance
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4: Legal */}
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Legal
             </p>
             <ul className="flex flex-col gap-2">
               <li>
@@ -453,24 +509,26 @@ function SiteFooter() {
                   Terms of Service
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/accessibility"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Accessibility
+                </Link>
+              </li>
             </ul>
           </div>
+        </div>
 
-          {/* Column 4: Contact */}
-          <div>
-            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
-              Contact
-            </p>
-            <a
-              href="mailto:hello@whitecoatprep.com"
-              className="text-sm text-foreground hover:text-accent transition-colors"
-            >
-              Contact us
-            </a>
-            <p className="mt-3 text-xs text-subtle">
-              Data encrypted AES-256, stored in Canada.
-            </p>
-          </div>
+        {/* Bottom strip */}
+        <div className="mt-10 flex flex-col items-center gap-1 border-t border-border pt-8 text-center sm:flex-row sm:justify-between sm:text-left">
+          <p className="text-xs text-muted">
+            Debrief by Whitecoat Prep &middot; &copy; 2026
+          </p>
+          <p className="text-xs text-subtle">
+            Talk first. Forms second.
+          </p>
         </div>
       </div>
     </footer>
