@@ -1,6 +1,9 @@
 /**
  * Unit tests for app/src/app/api/process/route.ts
  *
+ * Gemini-only pipeline. Only GCP_PROJECT_ID is required as a server-side
+ * env var (no DEEPGRAM_API_KEY or ANTHROPIC_API_KEY).
+ *
  * Strategy: mock `@/lib/supabase/server` to return a configurable Supabase
  * client stub, and mock `@/lib/pipeline/index` so runPipeline never makes
  * real network calls.  `next/headers` (cookies) is also mocked so the server
@@ -59,9 +62,6 @@ const mockRunPipeline = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/pipeline/index", () => ({
   runPipeline: (...args: unknown[]) => mockRunPipeline(...args),
-  // resolveProvider is called by the route to determine which env vars to validate.
-  // Default to "deepgram" so existing tests that set DEEPGRAM_API_KEY / ANTHROPIC_API_KEY pass.
-  resolveProvider: vi.fn().mockReturnValue("deepgram"),
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -235,20 +235,18 @@ import { after } from "next/server";
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe("POST /api/process", () => {
-  const savedDeepgram = process.env.DEEPGRAM_API_KEY;
-  const savedAnthropic = process.env.ANTHROPIC_API_KEY;
+  const savedGcpProjectId = process.env.GCP_PROJECT_ID;
 
   beforeEach(() => {
     vi.clearAllMocks();
     afterCallbacks.length = 0;
     mockRunPipeline.mockResolvedValue(undefined);
-    process.env.DEEPGRAM_API_KEY = "test-deepgram-key";
-    process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
+    // Gemini-only: only GCP_PROJECT_ID is required
+    process.env.GCP_PROJECT_ID = "test-gcp-project";
   });
 
   afterEach(() => {
-    process.env.DEEPGRAM_API_KEY = savedDeepgram;
-    process.env.ANTHROPIC_API_KEY = savedAnthropic;
+    process.env.GCP_PROJECT_ID = savedGcpProjectId;
   });
 
   // ── 1. Unauthenticated ────────────────────────────────────────────────────
@@ -335,10 +333,12 @@ describe("POST /api/process", () => {
     expect(input.residentEmail).toBe("resident@example.com");
     expect(input.rotationName).toBe("Internal Medicine");
 
-    expect(config.deepgramApiKey).toBe("test-deepgram-key");
-    expect(config.anthropicApiKey).toBe("test-anthropic-key");
+    // Gemini-only config — no deepgramApiKey or anthropicApiKey
+    expect(config.gcpProjectId).toBe("test-gcp-project");
     expect(typeof config.timeoutMs).toBe("number");
     expect(config.timeoutMs).toBeGreaterThan(0);
+    expect(config).not.toHaveProperty("deepgramApiKey");
+    expect(config).not.toHaveProperty("anthropicApiKey");
   });
 
   it("passes French language from recording to runPipeline (via after callback)", async () => {
@@ -352,36 +352,23 @@ describe("POST /api/process", () => {
     expect(input.language).toBe("fr");
   });
 
-  // ── 5. Missing required env vars ──────────────────────────────────────────
-  it("returns 500 when DEEPGRAM_API_KEY is missing", async () => {
+  // ── 5. Missing GCP_PROJECT_ID ─────────────────────────────────────────────
+  it("returns 500 when GCP_PROJECT_ID is missing", async () => {
     currentSupabaseClient = makeSupabaseClient({});
-    delete process.env.DEEPGRAM_API_KEY;
+    delete process.env.GCP_PROJECT_ID;
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
     expect(res.status).toBe(500);
-    const bodyText = await res.text();
-    // Must not leak the other key or any secret
-    expect(bodyText).not.toContain("test-anthropic-key");
-    const body = JSON.parse(bodyText);
+    const body = await res.json();
     expect(body.error).toMatch(/server configuration/i);
   });
 
-  it("returns 500 when ANTHROPIC_API_KEY is missing", async () => {
+  it("does not expose any secret values in 500 error response", async () => {
     currentSupabaseClient = makeSupabaseClient({});
-    delete process.env.ANTHROPIC_API_KEY;
-    const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
-    expect(res.status).toBe(500);
-    const bodyText = await res.text();
-    expect(bodyText).not.toContain("test-deepgram-key");
-  });
-
-  it("does not leak API key values when both keys are missing", async () => {
-    currentSupabaseClient = makeSupabaseClient({});
-    delete process.env.DEEPGRAM_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.GCP_PROJECT_ID;
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
     const bodyText = await res.text();
-    expect(bodyText).not.toContain("test-deepgram-key");
-    expect(bodyText).not.toContain("test-anthropic-key");
+    // Must not leak GCP project name or any credential info
+    expect(bodyText).not.toContain("test-gcp-project");
   });
 
   // ── 6. Duplicate trigger ──────────────────────────────────────────────────
@@ -452,34 +439,27 @@ describe("POST /api/process", () => {
   });
 
   // ── 9. Background-triggering: response returns BEFORE pipeline resolves ───
-  // With after(), the route returns 202 immediately; runPipeline is only
-  // invoked when the after() callback is drained (after the response).
   it("response is returned before runPipeline is called (fire-and-forget)", async () => {
     currentSupabaseClient = makeSupabaseClient({});
     let pipelineCalledAt = 0;
 
     mockRunPipeline.mockImplementation(async () => {
       pipelineCalledAt = Date.now();
-      // Simulate slow pipeline work
       await new Promise((r) => setTimeout(r, 10));
     });
 
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
     const responseReturnedAt = Date.now();
 
-    // Response should be 202 and runPipeline NOT yet called
     expect(res.status).toBe(202);
     expect(pipelineCalledAt).toBe(0);
     expect(mockRunPipeline).not.toHaveBeenCalled();
 
-    // after() should have captured the callback
     expect(after).toHaveBeenCalledOnce();
     expect(afterCallbacks).toHaveLength(1);
 
-    // Draining the callback simulates Vercel executing it post-response
     await afterCallbacks[0]();
 
-    // Pipeline ran AFTER the response was already returned
     expect(pipelineCalledAt).toBeGreaterThan(0);
     expect(pipelineCalledAt).toBeGreaterThanOrEqual(responseReturnedAt);
     expect(mockRunPipeline).toHaveBeenCalledOnce();
@@ -519,7 +499,6 @@ describe("POST /api/process", () => {
     });
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
     expect(res.status).toBe(202);
-    // Drain after() callback to verify pipeline args
     await afterCallbacks[0]();
     const [, input] = mockRunPipeline.mock.calls[0];
     expect(input.preceptorEmail).toBeUndefined();
