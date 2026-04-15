@@ -6,3 +6,8 @@
 node_modules/
 .env
 .env.local
+
+# Playwright
+app/playwright-report/
+app/test-results/
+app/blob-report/
