@@ -7,7 +7,7 @@
  * helper can be imported outside a Next.js runtime.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -24,6 +24,23 @@ function makeRequest(body: unknown): Request {
     body: JSON.stringify(body),
   });
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Mock: next/server — capture after() callbacks for testing
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Captured after() callbacks, executed manually in tests that need it. */
+const afterCallbacks: Array<() => unknown> = [];
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: vi.fn((cb: () => unknown) => {
+      afterCallbacks.push(cb);
+    }),
+  };
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Mock: next/headers (required by createClient)
@@ -208,6 +225,7 @@ vi.mock("@/lib/supabase/server", () => ({
 // Import route AFTER mocks are in place
 // ──────────────────────────────────────────────────────────────────────────────
 import { POST } from "@/app/api/process/route";
+import { after } from "next/server";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tests
@@ -219,6 +237,7 @@ describe("POST /api/process", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    afterCallbacks.length = 0;
     mockRunPipeline.mockResolvedValue(undefined);
     process.env.DEEPGRAM_API_KEY = "test-deepgram-key";
     process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
@@ -281,14 +300,22 @@ describe("POST /api/process", () => {
   });
 
   // ── 4. Happy path ─────────────────────────────────────────────────────────
-  it("calls runPipeline once with the correct input shape and returns 200", async () => {
+  it("registers runPipeline via after() with the correct input shape and returns 202", async () => {
     currentSupabaseClient = makeSupabaseClient({});
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const body = await res.json();
-    expect(body).toEqual({ success: true });
+    expect(body).toMatchObject({ success: true, status: "processing" });
 
+    // after() should have been called once; runPipeline is NOT called yet
+    expect(after).toHaveBeenCalledOnce();
+    expect(mockRunPipeline).not.toHaveBeenCalled();
+
+    // Drain the after() callback to verify the correct args are passed through
+    expect(afterCallbacks).toHaveLength(1);
+    await afterCallbacks[0]();
     expect(mockRunPipeline).toHaveBeenCalledOnce();
+
     const [_supabase, input, config] = mockRunPipeline.mock.calls[0];
 
     expect(input.sessionId).toBe(VALID_UUID);
@@ -311,11 +338,13 @@ describe("POST /api/process", () => {
     expect(config.timeoutMs).toBeGreaterThan(0);
   });
 
-  it("passes French language from recording to runPipeline", async () => {
+  it("passes French language from recording to runPipeline (via after callback)", async () => {
     currentSupabaseClient = makeSupabaseClient({
       recording: { audio_path: "recordings/fr.webm", language: "fr" },
     });
     await POST(makeRequest({ sessionId: VALID_UUID }) as never);
+    // Drain the callback
+    await afterCallbacks[0]();
     const [, input] = mockRunPipeline.mock.calls[0];
     expect(input.language).toBe("fr");
   });
@@ -388,12 +417,12 @@ describe("POST /api/process", () => {
   });
 
   // ── 7. Response shape on success ──────────────────────────────────────────
-  it("returns JSON { success: true } with status 200 on success", async () => {
+  it("returns JSON { success: true, status: 'processing' } with status 202 on success", async () => {
     currentSupabaseClient = makeSupabaseClient({});
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const body = await res.json();
-    expect(body).toMatchObject({ success: true });
+    expect(body).toMatchObject({ success: true, status: "processing" });
   });
 
   it("returns application/json content-type on success", async () => {
@@ -419,25 +448,37 @@ describe("POST /api/process", () => {
     expect(res.status).toBe(404);
   });
 
-  // ── 9. Background-triggering: pipeline called before response returns ─────
-  // The route awaits runPipeline synchronously, so the spy must be called
-  // before the Response is constructed.
-  it("runPipeline is called before the response is returned", async () => {
+  // ── 9. Background-triggering: response returns BEFORE pipeline resolves ───
+  // With after(), the route returns 202 immediately; runPipeline is only
+  // invoked when the after() callback is drained (after the response).
+  it("response is returned before runPipeline is called (fire-and-forget)", async () => {
     currentSupabaseClient = makeSupabaseClient({});
     let pipelineCalledAt = 0;
-    let responseReturnedAt = 0;
+
     mockRunPipeline.mockImplementation(async () => {
       pipelineCalledAt = Date.now();
-      return undefined;
+      // Simulate slow pipeline work
+      await new Promise((r) => setTimeout(r, 10));
     });
 
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
-    responseReturnedAt = Date.now();
+    const responseReturnedAt = Date.now();
 
-    expect(res.status).toBe(200);
+    // Response should be 202 and runPipeline NOT yet called
+    expect(res.status).toBe(202);
+    expect(pipelineCalledAt).toBe(0);
+    expect(mockRunPipeline).not.toHaveBeenCalled();
+
+    // after() should have captured the callback
+    expect(after).toHaveBeenCalledOnce();
+    expect(afterCallbacks).toHaveLength(1);
+
+    // Draining the callback simulates Vercel executing it post-response
+    await afterCallbacks[0]();
+
+    // Pipeline ran AFTER the response was already returned
     expect(pipelineCalledAt).toBeGreaterThan(0);
-    // pipeline was triggered before (or at the same instant as) the response
-    expect(pipelineCalledAt).toBeLessThanOrEqual(responseReturnedAt);
+    expect(pipelineCalledAt).toBeGreaterThanOrEqual(responseReturnedAt);
     expect(mockRunPipeline).toHaveBeenCalledOnce();
   });
 
@@ -474,7 +515,9 @@ describe("POST /api/process", () => {
       },
     });
     const res = await POST(makeRequest({ sessionId: VALID_UUID }) as never);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
+    // Drain after() callback to verify pipeline args
+    await afterCallbacks[0]();
     const [, input] = mockRunPipeline.mock.calls[0];
     expect(input.preceptorEmail).toBeUndefined();
     expect(input.rotationName).toBeNull();
