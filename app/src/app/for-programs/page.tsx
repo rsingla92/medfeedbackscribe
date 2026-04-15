@@ -1,0 +1,307 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "For Programs — Debrief by Whitecoat Prep",
+  description:
+    "Debrief helps residency programs increase assessment completion rates, capture verbal feedback formally, and build richer competency data sets. Canadian data residency included.",
+};
+
+function DebriefWordmark() {
+  return (
+    <Link
+      href="/landing"
+      className="flex items-center gap-2"
+      aria-label="Debrief by Whitecoat Prep — home"
+    >
+      <span aria-hidden="true" className="flex items-end gap-[2px] h-5">
+        <span className="w-[3px] h-2 rounded-full bg-accent opacity-60" />
+        <span className="w-[3px] h-4 rounded-full bg-accent" />
+        <span className="w-[3px] h-3 rounded-full bg-accent opacity-80" />
+        <span className="w-[3px] h-5 rounded-full bg-accent" />
+        <span className="w-[3px] h-2.5 rounded-full bg-accent opacity-70" />
+        <span className="w-[3px] h-3.5 rounded-full bg-accent opacity-90" />
+        <span className="w-[3px] h-1.5 rounded-full bg-accent opacity-50" />
+      </span>
+      <span className="font-[family-name:var(--font-display)] text-xl text-accent leading-none">
+        Debrief
+      </span>
+    </Link>
+  );
+}
+
+const problemPoints = [
+  "Assessment completion rates stay low because filling out a form after a busy shift is the last thing a preceptor wants to do.",
+  "Verbal feedback, which is often the richest feedback a trainee receives, never makes it into the formal record.",
+  "Competency data arrives late, in batches, and rarely reflects what was actually observed in the room.",
+];
+
+const programBenefits = [
+  {
+    title: "Higher completion",
+    body: "Preceptors give feedback verbally, as they already do. Residents review, edit, and submit. The barrier to completion drops because no one is staring at a blank form.",
+  },
+  {
+    title: "Faster turnaround",
+    body: "A structured assessment can be ready minutes after a shift ends, not weeks later. Timely feedback is better feedback for both the trainee and the program.",
+  },
+  {
+    title: "Richer competency data",
+    body: "Verbal comments map automatically to CanMEDS roles, CCFP milestones, and Royal College Competence by Design (CBD) competencies. Aggregate data for Competence Committee reviews.",
+  },
+  {
+    title: "Canadian data residency",
+    body: "All data is stored and processed on Canadian infrastructure. No cross-border transfer, no US-based cloud storage. A practical answer to institutional procurement questions.",
+  },
+];
+
+const rolloutSteps = [
+  {
+    number: "01",
+    title: "Pilot with 5 to 10 residents",
+    body: "Start with a cohort already comfortable with mobile-first tools. No IT integration required. Residents sign up, record, and export within the first week.",
+  },
+  {
+    number: "02",
+    title: "Integrate with your current forms",
+    body: "Debrief exports to CSV or PDF. Drop the output into your existing assessment system, whether that is One45, MedSIS, or your own forms. No new software to maintain.",
+  },
+  {
+    number: "03",
+    title: "Scale to the full program",
+    body: "Once the pilot cohort has a rhythm, expand to the full program. Aggregate competency data starts flowing to your Competence Committee from real verbal encounters.",
+  },
+];
+
+export default function ForProgramsPage() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Nav */}
+      <nav
+        className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
+        aria-label="Site navigation"
+      >
+        <DebriefWordmark />
+        <a
+          href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none"
+        >
+          Request a pilot
+        </a>
+      </nav>
+
+      <main id="main-content">
+        {/* Hero */}
+        <section
+          aria-labelledby="hero-heading"
+          className="mx-auto max-w-[960px] px-6 pb-16 pt-14 sm:pb-20 sm:pt-20"
+        >
+          <p className="mb-4 text-xs font-medium uppercase tracking-widest text-muted">
+            For programs
+          </p>
+          <h1
+            id="hero-heading"
+            className="font-[family-name:var(--font-display)] text-[2.5rem] leading-[1.1] text-foreground sm:text-[3.25rem] lg:text-[3.75rem]"
+          >
+            Built for residency programs,
+            <br className="hidden sm:block" />
+            <span className="text-accent"> not against them.</span>
+          </h1>
+          <p className="mt-6 max-w-[640px] text-lg leading-relaxed text-muted">
+            Verbal feedback already happens. Preceptors and trainees talk after
+            almost every encounter. Debrief preserves those conversations and
+            turns them into the formal assessment record your program needs,
+            without adding a new step for supervisors.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+              className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
+            >
+              Request a pilot
+            </a>
+            <Link
+              href="/contact"
+              className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
+            >
+              Talk to us first
+            </Link>
+          </div>
+        </section>
+
+        {/* Problem */}
+        <section
+          aria-labelledby="problem-heading"
+          className="border-t border-border bg-surface"
+        >
+          <div className="mx-auto max-w-[960px] px-6 py-16 sm:py-20">
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              The problem
+            </p>
+            <h2
+              id="problem-heading"
+              className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
+            >
+              Program directors know these three things well.
+            </h2>
+            <ul className="mt-8 flex flex-col gap-4" aria-label="Common program problems">
+              {problemPoints.map((point, i) => (
+                <li key={i} className="flex gap-4">
+                  <span
+                    className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-background font-[family-name:var(--font-mono)] text-xs text-muted"
+                    aria-hidden="true"
+                  >
+                    {i + 1}
+                  </span>
+                  <p className="text-base leading-relaxed text-muted">{point}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* What Debrief gives a program */}
+        <section
+          aria-labelledby="benefits-heading"
+          className="border-t border-border"
+        >
+          <div className="mx-auto max-w-[960px] px-6 py-16 sm:py-20">
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              What you get
+            </p>
+            <h2
+              id="benefits-heading"
+              className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
+            >
+              What Debrief gives a program.
+            </h2>
+            <ul
+              className="mt-10 grid gap-4 sm:grid-cols-2"
+              aria-label="Program benefits"
+            >
+              {programBenefits.map((benefit) => (
+                <li
+                  key={benefit.title}
+                  className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
+                >
+                  <h3 className="text-base font-semibold text-foreground">
+                    {benefit.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {benefit.body}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* Rollout */}
+        <section
+          aria-labelledby="rollout-heading"
+          className="border-t border-border bg-surface"
+        >
+          <div className="mx-auto max-w-[960px] px-6 py-16 sm:py-20">
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Getting started
+            </p>
+            <h2
+              id="rollout-heading"
+              className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
+            >
+              How a program rolls it out.
+            </h2>
+            <ol
+              className="mt-10 grid gap-6 sm:grid-cols-3"
+              aria-label="Rollout steps"
+            >
+              {rolloutSteps.map((step) => (
+                <li
+                  key={step.number}
+                  className="rounded-[var(--radius-lg)] border border-border bg-background p-6"
+                >
+                  <span
+                    className="font-[family-name:var(--font-mono)] text-2xl font-normal text-accent"
+                    aria-hidden="true"
+                  >
+                    {step.number}
+                  </span>
+                  <h3 className="mt-3 text-base font-semibold text-foreground">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {step.body}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section aria-labelledby="cta-heading" className="border-t border-border">
+          <div className="mx-auto max-w-[960px] px-6 py-20 text-center sm:py-28">
+            <h2
+              id="cta-heading"
+              className="font-[family-name:var(--font-display)] text-[2rem] leading-[1.2] text-foreground sm:text-[2.5rem]"
+            >
+              Start a pilot this rotation.
+            </h2>
+            <p className="mx-auto mt-4 max-w-[480px] text-base leading-relaxed text-muted">
+              We work directly with program administrators to get a cohort set
+              up. No procurement overhead for a pilot. Email us and we will
+              respond within two business days.
+            </p>
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <a
+                href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+                className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
+              >
+                pilot@whitecoatprep.com
+              </a>
+              <Link
+                href="/security"
+                className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
+              >
+                Security and compliance
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border">
+        <div className="mx-auto max-w-[960px] px-6 py-8">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted">
+            <p>
+              Debrief by{" "}
+              <a
+                href="https://www.whitecoatprep.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent underline underline-offset-2 hover:text-accent-hover"
+              >
+                Whitecoat Prep
+              </a>
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link href="/landing" className="hover:text-foreground transition-colors">
+                Home
+              </Link>
+              <Link href="/security" className="hover:text-foreground transition-colors">
+                Security
+              </Link>
+              <Link href="/privacy" className="hover:text-foreground transition-colors">
+                Privacy
+              </Link>
+              <Link href="/terms" className="hover:text-foreground transition-colors">
+                Terms
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
