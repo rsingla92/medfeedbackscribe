@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Voice-to-assessment for medical trainee feedback. Preceptors speak; trainees get structured competency-based assessment forms in minutes.",
 };
 
-// ─── Wordmark (text-based, Instrument Serif + amber accent) ──────────────────
+// Wordmark (text-based, Instrument Serif + amber accent)
 
 function DebriefWordmark() {
   return (
@@ -30,7 +30,7 @@ function DebriefWordmark() {
   );
 }
 
-// ─── Icon helpers (inline SVG, no extra deps) ────────────────────────────────
+// Icon helpers (inline SVG, no extra deps)
 
 function MicIcon() {
   return (
@@ -130,7 +130,7 @@ function ArrowDownIcon() {
   );
 }
 
-// ─── Feature card data ────────────────────────────────────────────────────────
+// Feature card data
 
 const features = [
   {
@@ -165,7 +165,7 @@ const features = [
   },
 ];
 
-// ─── Step visual mockups ──────────────────────────────────────────────────────
+// Step visual mockups
 
 function RecordMockup() {
   return (
@@ -213,7 +213,7 @@ function ProcessMockup() {
       </div>
       <p className="text-[10px] leading-relaxed text-foreground">
         {/* Fake transcript with "scrubbed" tokens */}
-        "Good differential on{" "}
+        &ldquo;Good differential on{" "}
         <span className="rounded bg-warning-bg px-0.5 text-warning line-through decoration-1">
           Mr. Chen
         </span>{" "}
@@ -221,7 +221,7 @@ function ProcessMockup() {
         <span className="rounded bg-warning-bg px-0.5 text-warning line-through decoration-1">
           room 412
         </span>{" "}
-        presentation was confident..."
+        presentation was confident...&rdquo;
       </p>
       <div className="mt-2 flex items-center gap-1">
         <span className="h-1.5 w-1.5 rounded-full bg-success" />
@@ -264,7 +264,7 @@ function ReviewMockup() {
   );
 }
 
-// ─── Steps ────────────────────────────────────────────────────────────────────
+// Steps
 
 const steps = [
   {
@@ -282,17 +282,207 @@ const steps = [
   {
     number: "03",
     title: "Review and export",
-    body: "The trainee reviews the pre-filled assessment, corrects anything the system missed, and exports to CSV or PDF with one tap.",
+    body: "The trainee reviews and edits the pre-filled assessment, then exports to CSV or PDF with one tap.",
     visual: <ReviewMockup />,
   },
 ];
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Hero vignette: verbal quote bubble + arrow + structured form snippet
+
+function HeroVignette() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex flex-col items-center gap-3 w-full max-w-[320px] mx-auto lg:mx-0 lg:max-w-[300px]"
+    >
+      {/* Card A: verbal quote bubble */}
+      <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm p-4">
+        {/* Header row */}
+        <div className="flex items-center gap-2 mb-3">
+          {/* Amber waveform glyph */}
+          <div className="flex items-end gap-[2px] h-4 shrink-0">
+            {[3, 6, 4, 7, 5, 3, 6, 4].map((h, i) => (
+              <span
+                key={i}
+                className="w-[2px] rounded-full bg-accent"
+                style={{ height: `${h * 2}px`, opacity: 0.5 + i * 0.05 }}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] font-medium uppercase tracking-widest text-muted">
+            Preceptor speaking
+          </span>
+        </div>
+        {/* Quote bubble */}
+        <div className="relative rounded-[var(--radius-md)] bg-background border border-border px-3 py-2.5">
+          <p className="text-[11px] leading-relaxed text-foreground italic">
+            &ldquo;Your approach to the differential was methodical. You picked up
+            the history details that mattered and communicated the plan clearly
+            to the team.&rdquo;
+          </p>
+          {/* Bubble tail */}
+          <span className="absolute -bottom-[7px] left-5 block h-3 w-3 rotate-45 border-b border-r border-border bg-background" />
+        </div>
+      </div>
+
+      {/* Arrow / transition mark */}
+      <div className="flex flex-col items-center gap-1 py-1">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          className="h-5 w-5 text-muted"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"
+          />
+        </svg>
+        <span className="text-[10px] font-medium uppercase tracking-widest text-muted">
+          Structured
+        </span>
+      </div>
+
+      {/* Card B: structured assessment form snippet */}
+      <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm p-4">
+        <div className="text-[10px] font-medium uppercase tracking-widest text-muted mb-3">
+          Assessment form
+        </div>
+        <div className="space-y-2">
+          {[
+            { role: "Medical Expert", rating: "4 / 5", tag: "CanMEDS" },
+            { role: "Communicator", rating: "5 / 5", tag: "CanMEDS" },
+            { role: "Collaborator", rating: "4 / 5", tag: "CanMEDS" },
+          ].map((row) => (
+            <div
+              key={row.role}
+              className="flex items-center justify-between border-b border-border-light pb-2 last:border-0 last:pb-0"
+            >
+              <div>
+                <span className="text-[10px] font-medium text-foreground">
+                  {row.role}
+                </span>
+                <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[9px] text-muted">
+                  {row.tag}
+                </span>
+              </div>
+              <span className="font-[family-name:var(--font-mono)] text-[10px] font-semibold text-accent">
+                {row.rating}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+          <span className="text-[9px] text-muted">
+            Trainee reviews and edits before export
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Full footer component
+
+function SiteFooter() {
+  return (
+    <footer className="border-t border-border">
+      <div className="mx-auto max-w-[960px] px-6 py-12 sm:py-16">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+
+          {/* Column 1: Debrief */}
+          <div className="flex flex-col gap-3">
+            <DebriefWordmark />
+            <p className="text-sm text-muted leading-relaxed">
+              Talk first. Forms second.
+            </p>
+            <p className="text-xs text-subtle">
+              &copy; {new Date().getFullYear()} Whitecoat Prep. All rights reserved.
+            </p>
+          </div>
+
+          {/* Column 2: Company */}
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Company
+            </p>
+            <ul className="flex flex-col gap-2">
+              <li>
+                <a
+                  href="https://www.whitecoatprep.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Whitecoat Prep
+                </a>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  About
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: Resources */}
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Resources
+            </p>
+            <ul className="flex flex-col gap-2">
+              <li>
+                <Link
+                  href="/privacy"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/terms"
+                  className="text-sm text-foreground hover:text-accent transition-colors"
+                >
+                  Terms of Service
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4: Contact */}
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+              Contact
+            </p>
+            <a
+              href="mailto:hello@whitecoatprep.com"
+              className="text-sm text-foreground hover:text-accent transition-colors"
+            >
+              Contact us
+            </a>
+            <p className="mt-3 text-xs text-subtle">
+              Data encrypted AES-256, stored in Canada.
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// Page
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* ── Nav ──────────────────────────────────────────────────────────────── */}
+      {/* Nav */}
       <nav
         className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
         aria-label="Site navigation"
@@ -307,64 +497,75 @@ export default function LandingPage() {
       </nav>
 
       <main id="main-content">
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        {/* Hero */}
         <section
           aria-labelledby="hero-heading"
-          className="mx-auto max-w-[960px] px-6 pb-20 pt-16 text-center sm:pt-24"
+          className="mx-auto max-w-[960px] px-6 pb-20 pt-16 sm:pt-24"
         >
-          <h1
-            id="hero-heading"
-            className="font-[family-name:var(--font-display)] text-[2.75rem] leading-[1.1] text-foreground sm:text-[3.5rem] lg:text-[4rem]"
-          >
-            Talk first.
-            <br />
-            <span className="text-accent">Forms second.</span>
-          </h1>
+          {/* Desktop: two-column layout; Mobile: stacked */}
+          <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-start lg:gap-16">
 
-          <p className="mx-auto mt-6 max-w-[560px] text-lg leading-relaxed text-muted">
-            Preceptors give rich verbal feedback. Debrief captures it, scrubs
-            patient identifiers, and fills competency-based assessment forms in
-            minutes.
-          </p>
+            {/* Left: headline + CTAs */}
+            <div className="flex-1 text-center lg:text-left">
+              <h1
+                id="hero-heading"
+                className="font-[family-name:var(--font-display)] text-[2.75rem] leading-[1.1] text-foreground sm:text-[3.5rem] lg:text-[4rem]"
+              >
+                Talk first.
+                <br />
+                <span className="text-accent">Forms second.</span>
+              </h1>
 
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link
-              href="/demo"
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
-            >
-              <MicIcon />
-              Try it, no sign-up
-            </Link>
-            <a
-              href="#how-it-works"
-              className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
-            >
-              See how it works
-              <ArrowDownIcon />
-            </a>
-          </div>
+              <p className="mx-auto mt-6 max-w-[560px] text-lg leading-relaxed text-muted lg:mx-0">
+                Preceptors give rich verbal feedback. Debrief captures it, scrubs
+                patient identifiers, and fills competency-based assessment forms in
+                minutes.
+              </p>
 
-          {/* UBC pilot attribution (below CTAs) */}
-          <div className="mt-8 flex flex-col items-center gap-3">
-            <p className="text-xs text-muted">
-              Piloting with{" "}
-              <span className="font-medium text-foreground">
-                UBC Family Medicine
-              </span>
-            </p>
-            {/* UBC wordmark */}
-            <Image
-              src="/ubc-logo.svg"
-              alt="University of British Columbia"
-              width={160}
-              height={48}
-              className="h-10 w-auto opacity-70"
-              unoptimized
-            />
+              <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                <Link
+                  href="/demo"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
+                >
+                  <MicIcon />
+                  Try it, no sign-up
+                </Link>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
+                >
+                  See how it works
+                  <ArrowDownIcon />
+                </a>
+              </div>
+
+              {/* UBC pilot attribution (below CTAs) */}
+              <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
+                <p className="text-xs text-muted">
+                  Piloting with{" "}
+                  <span className="font-medium text-foreground">
+                    UBC Family Medicine
+                  </span>
+                </p>
+                <Image
+                  src="/ubc-logo.svg"
+                  alt="University of British Columbia"
+                  width={160}
+                  height={48}
+                  className="h-10 w-auto opacity-70"
+                  unoptimized
+                />
+              </div>
+            </div>
+
+            {/* Right: hero vignette (above headline on mobile via order-first) */}
+            <div className="w-full lg:w-auto order-first lg:order-last">
+              <HeroVignette />
+            </div>
           </div>
         </section>
 
-        {/* ── Problem ──────────────────────────────────────────────────────── */}
+        {/* Problem */}
         <section
           aria-labelledby="problem-heading"
           className="border-t border-border bg-surface"
@@ -381,23 +582,21 @@ export default function LandingPage() {
               <br className="hidden sm:block" /> None of it makes it to the form.
             </h2>
             <p className="mt-5 max-w-[680px] text-base leading-relaxed text-muted">
-              Verbal feedback after a clinical encounter is some of the richest
-              a trainee gets. A thoughtful preceptor, right after the case,
-              speaking candidly about what they observed.
+              Verbal feedback is some of the richest a trainee will ever get. But
+              it does not always come right after the case. The EMR does not call.
+              The form does not write itself. So the conversation lives in
+              someone&rsquo;s memory for a few hours, then it is gone.
             </p>
             <p className="mt-4 max-w-[680px] text-base leading-relaxed text-muted">
-              But it lives in a 90-second hallway conversation that no one
-              writes down. The EMR calls. The next patient arrives. The form
-              gets left for later, then filled from memory, then never quite
-              captures what was actually said.
-            </p>
-            <p className="mt-4 max-w-[680px] text-base leading-relaxed text-muted">
-              Debrief makes that conversation count toward the formal record.
+              Debrief lets a preceptor speak for a few minutes whenever the moment
+              lands, and turns that conversation into structured documentation that
+              counts toward the formal record. The trainee reviews and edits
+              before it is finalized.
             </p>
           </div>
         </section>
 
-        {/* ── How it works ─────────────────────────────────────────────────── */}
+        {/* How it works */}
         <section
           id="how-it-works"
           aria-labelledby="how-heading"
@@ -439,10 +638,27 @@ export default function LandingPage() {
                 </li>
               ))}
             </ol>
+
+            {/* Competency framework compatibility */}
+            <p className="mt-8 text-sm text-muted">
+              Maps to{" "}
+              <span className="font-[family-name:var(--font-mono)] text-xs text-foreground">
+                CanMEDS
+              </span>
+              ,{" "}
+              <span className="font-[family-name:var(--font-mono)] text-xs text-foreground">
+                CCFP
+              </span>
+              , and the Royal College&rsquo;s{" "}
+              <span className="font-[family-name:var(--font-mono)] text-xs text-foreground">
+                Competence by Design (CBD)
+              </span>
+              .
+            </p>
           </div>
         </section>
 
-        {/* ── Features ─────────────────────────────────────────────────────── */}
+        {/* Features */}
         <section
           aria-labelledby="features-heading"
           className="border-t border-border bg-surface"
@@ -485,7 +701,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── CTA ──────────────────────────────────────────────────────────── */}
+        {/* CTA */}
         <section
           aria-labelledby="cta-heading"
           className="border-t border-border"
@@ -511,44 +727,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* ── Footer ───────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-[960px] px-6 py-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Debrief by{" "}
-                <a
-                  href="https://www.whitecoatprep.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent underline underline-offset-2 hover:text-accent-hover"
-                >
-                  Whitecoat Prep
-                </a>
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted sm:justify-end">
-              <p>Data encrypted AES-256, stored in Canada.</p>
-              <div className="flex gap-4">
-                <Link
-                  href="/privacy"
-                  className="hover:text-foreground transition-colors"
-                >
-                  Privacy
-                </Link>
-                <Link
-                  href="/terms"
-                  className="hover:text-foreground transition-colors"
-                >
-                  Terms
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
