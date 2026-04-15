@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { runPipeline } from "@/lib/pipeline/index";
+import { runPipeline, resolveProvider } from "@/lib/pipeline/index";
 import { isValidUUID } from "@/lib/uuid";
 
 const TIMEOUT_MS = 120_000;
@@ -131,16 +131,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate environment variables
-    const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    // Validate environment variables based on active provider
+    const provider = resolveProvider();
+    const deepgramApiKey = process.env.DEEPGRAM_API_KEY ?? "";
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? "";
+    const gcpProjectId = process.env.GCP_PROJECT_ID;
 
-    if (!deepgramApiKey || !anthropicApiKey) {
-      console.error("Missing required API keys: DEEPGRAM_API_KEY or ANTHROPIC_API_KEY");
-      return Response.json(
-        { error: "Server configuration error" },
-        { status: 500 }
-      );
+    if (provider === "gemini") {
+      // Gemini path: GCP credentials must be available (via GOOGLE_APPLICATION_CREDENTIALS
+      // or Application Default Credentials on the hosting platform).
+      // GCP_PROJECT_ID is required for the Vertex AI client.
+      if (!gcpProjectId) {
+        console.error("Missing required env var: GCP_PROJECT_ID (needed for Gemini/Vertex AI)");
+        return Response.json(
+          { error: "Server configuration error" },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Deepgram legacy path
+      if (!deepgramApiKey || !anthropicApiKey) {
+        console.error("Missing required API keys: DEEPGRAM_API_KEY or ANTHROPIC_API_KEY");
+        return Response.json(
+          { error: "Server configuration error" },
+          { status: 500 }
+        );
+      }
     }
 
     // Run the pipeline (non-blocking from the client's perspective is optional;
@@ -169,6 +185,7 @@ export async function POST(request: NextRequest) {
         deepgramApiKey,
         anthropicApiKey,
         timeoutMs: TIMEOUT_MS,
+        gcpProjectId,
       }
     );
 
