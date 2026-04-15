@@ -59,6 +59,9 @@ const mockRunPipeline = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/pipeline/index", () => ({
   runPipeline: (...args: unknown[]) => mockRunPipeline(...args),
+  // resolveProvider is called by the route to determine which env vars to validate.
+  // Default to "deepgram" so existing tests that set DEEPGRAM_API_KEY / ANTHROPIC_API_KEY pass.
+  resolveProvider: vi.fn().mockReturnValue("deepgram"),
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────

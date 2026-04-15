@@ -2,13 +2,13 @@
  * Unit tests for the Debrief pipeline orchestrator (app/src/lib/pipeline/index.ts)
  *
  * Mock strategy:
- * - vi.mock() all external modules: stt, phi-scrub, extract, email
+ * - vi.mock() all external modules: stt, phi-scrub, extract, email, gemini
  * - In-memory fake Supabase client that records calls and returns configurable data
- * - vi.stubEnv() to control RESEND_API_KEY / PROGRAM_ADMIN_EMAIL
+ * - vi.stubEnv() to control RESEND_API_KEY / PROGRAM_ADMIN_EMAIL / STT_PROVIDER
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { runPipeline } from '@/lib/pipeline/index'
+import { runPipeline, resolveProvider } from '@/lib/pipeline/index'
 
 // Module mocks
 
@@ -28,15 +28,24 @@ vi.mock('@/lib/email', () => ({
   sendAssessmentNotification: vi.fn(),
 }))
 
+vi.mock('@/lib/pipeline/gemini', () => ({
+  transcribeWithGemini: vi.fn(),
+  scrubAndExtractWithGemini: vi.fn(),
+  _resetVertexClient: vi.fn(),
+}))
+
 import { transcribeAudio } from '@/lib/pipeline/stt'
 import { scrubTranscript } from '@/lib/pipeline/phi-scrub'
 import { extractAssessment } from '@/lib/pipeline/extract'
 import { sendAssessmentNotification } from '@/lib/email'
+import { transcribeWithGemini, scrubAndExtractWithGemini } from '@/lib/pipeline/gemini'
 
 const mockTranscribeAudio = vi.mocked(transcribeAudio)
 const mockScrubTranscript = vi.mocked(scrubTranscript)
 const mockExtractAssessment = vi.mocked(extractAssessment)
 const mockSendAssessmentNotification = vi.mocked(sendAssessmentNotification)
+const mockTranscribeWithGemini = vi.mocked(transcribeWithGemini)
+const mockScrubAndExtractWithGemini = vi.mocked(scrubAndExtractWithGemini)
 
 // In-memory Supabase fake
 
@@ -174,6 +183,8 @@ describe('runPipeline', () => {
     vi.unstubAllEnvs()
     mockSendAssessmentNotification.mockResolvedValue(true)
     vi.stubEnv('RESEND_API_KEY', 'resend-test-key')
+    // Default to deepgram provider for existing tests (Gemini path tested separately below)
+    vi.stubEnv('STT_PROVIDER', 'deepgram')
   })
 
   afterEach(() => {
@@ -321,11 +332,14 @@ describe('runPipeline', () => {
     })
   })
 
-  describe('PHI scrub failure (non-fatal)', () => {
-    it('continues to extraction using raw transcript when PHI scrub fails', async () => {
+  describe('PHI scrub failure (FATAL — deepgram path)', () => {
+    // PHI scrub failure is FATAL in the deepgram path. The pipeline must never
+    // pass a potentially unredacted transcript downstream.
+
+    it('does NOT call extraction after PHI scrub failure', async () => {
+      vi.stubEnv('STT_PROVIDER', 'deepgram')
       mockTranscribeAudio.mockResolvedValue(goodSTTResult)
       mockScrubTranscript.mockRejectedValue(new Error('LLM timeout'))
-      mockExtractAssessment.mockResolvedValue(goodExtractionResult)
 
       const supabase = makeFakeSupabase({
         transcript_clean: null,
@@ -333,18 +347,13 @@ describe('runPipeline', () => {
       })
       await runPipeline(supabase as never, baseInput, baseConfig)
 
-      expect(mockExtractAssessment).toHaveBeenCalled()
-      expect(mockExtractAssessment).toHaveBeenCalledWith(
-        goodSTTResult.transcript,
-        baseInput.formTemplate,
-        baseConfig.anthropicApiKey
-      )
+      expect(mockExtractAssessment).not.toHaveBeenCalled()
     })
 
-    it('still reaches ready status when PHI scrub fails', async () => {
+    it('sets session status to processing_failed when PHI scrub fails', async () => {
+      vi.stubEnv('STT_PROVIDER', 'deepgram')
       mockTranscribeAudio.mockResolvedValue(goodSTTResult)
       mockScrubTranscript.mockRejectedValue(new Error('LLM timeout'))
-      mockExtractAssessment.mockResolvedValue(goodExtractionResult)
 
       const supabase = makeFakeSupabase({
         transcript_clean: null,
@@ -353,16 +362,16 @@ describe('runPipeline', () => {
       await runPipeline(supabase as never, baseInput, baseConfig)
 
       const updates = supabase._sessionUpdates()
-      const readyUpdate = updates.find(
-        (u) => (u as Record<string, unknown>).status === 'ready'
+      const failedUpdate = updates.find(
+        (u) => (u as Record<string, unknown>).status === 'processing_failed'
       )
-      expect(readyUpdate).toBeDefined()
+      expect(failedUpdate).toBeDefined()
     })
 
     it('logs phi_scrub step as failed', async () => {
+      vi.stubEnv('STT_PROVIDER', 'deepgram')
       mockTranscribeAudio.mockResolvedValue(goodSTTResult)
       mockScrubTranscript.mockRejectedValue(new Error('LLM timeout'))
-      mockExtractAssessment.mockResolvedValue(goodExtractionResult)
 
       const supabase = makeFakeSupabase({
         transcript_clean: null,
@@ -693,5 +702,163 @@ describe('runPipeline', () => {
       )
       expect(readyUpdate).toBeDefined()
     })
+  })
+})
+
+// =============================================================================
+// resolveProvider() unit tests
+// =============================================================================
+
+describe('resolveProvider', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('returns "gemini" when STT_PROVIDER=gemini', () => {
+    vi.stubEnv('STT_PROVIDER', 'gemini')
+    expect(resolveProvider()).toBe('gemini')
+  })
+
+  it('returns "deepgram" when STT_PROVIDER=deepgram', () => {
+    vi.stubEnv('STT_PROVIDER', 'deepgram')
+    expect(resolveProvider()).toBe('deepgram')
+  })
+
+  it('returns "gemini" when STT_PROVIDER is unset but GOOGLE_APPLICATION_CREDENTIALS is set', () => {
+    vi.stubEnv('STT_PROVIDER', '')
+    vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS', '/path/to/creds.json')
+    expect(resolveProvider()).toBe('gemini')
+  })
+
+  it('returns "deepgram" when STT_PROVIDER and GOOGLE_APPLICATION_CREDENTIALS are both unset', () => {
+    vi.stubEnv('STT_PROVIDER', '')
+    vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS', '')
+    expect(resolveProvider()).toBe('deepgram')
+  })
+})
+
+// =============================================================================
+// Both providers: happy path via describe.each
+// =============================================================================
+
+describe.each([
+  ['deepgram' as const],
+  ['gemini' as const],
+])('runPipeline happy path — provider=%s', (provider) => {
+  const geminiScrubExtractResult = {
+    clean: 'The resident performed an excellent intubation.',
+    totalRedactions: 0,
+    extraction: {
+      outputs: [
+        {
+          output_index: 1,
+          structured_fields: { skill_dimension: 'Medical Expert', rating: 4 },
+          competency_tags: ['Medical Expert'],
+          narrative_summary: 'Resident performed an excellent intubation.',
+          coaching_did_well: 'Smooth technique.',
+          coaching_consider: 'Communicate steps aloud.',
+          confidence: { skill_dimension: 0.9, rating: 0.85 },
+        },
+      ],
+      model: 'gemini-2.5-flash-preview-04-17',
+    },
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.unstubAllEnvs()
+    vi.stubEnv('STT_PROVIDER', provider)
+    vi.stubEnv('RESEND_API_KEY', 'resend-test-key')
+    vi.stubEnv('GCP_PROJECT_ID', 'test-project')
+
+    mockSendAssessmentNotification.mockResolvedValue(true)
+
+    if (provider === 'deepgram') {
+      mockTranscribeAudio.mockResolvedValue(goodSTTResult)
+      mockScrubTranscript.mockResolvedValue(goodScrubResult)
+      mockExtractAssessment.mockResolvedValue(goodExtractionResult)
+    } else {
+      mockTranscribeWithGemini.mockResolvedValue(goodSTTResult)
+      mockScrubAndExtractWithGemini.mockResolvedValue(geminiScrubExtractResult)
+    }
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  it('sets session status to processing at the start', async () => {
+    const supabase = makeFakeSupabase({ transcript_clean: goodScrubResult.clean })
+    await runPipeline(supabase as never, baseInput, baseConfig)
+
+    const updates = supabase._sessionUpdates()
+    expect(updates[0]).toMatchObject({ status: 'processing' })
+  })
+
+  it('sets session status to ready at the end', async () => {
+    const supabase = makeFakeSupabase({ transcript_clean: goodScrubResult.clean })
+    await runPipeline(supabase as never, baseInput, baseConfig)
+
+    const updates = supabase._sessionUpdates()
+    const lastUpdate = updates[updates.length - 1]
+    expect(lastUpdate).toMatchObject({ status: 'ready' })
+  })
+
+  it('saves raw transcript to recordings after STT', async () => {
+    const supabase = makeFakeSupabase({ transcript_clean: goodScrubResult.clean })
+    await runPipeline(supabase as never, baseInput, baseConfig)
+
+    const recordingUpdates = supabase._getCalls('recordings', 'update')
+    const rawUpdate = recordingUpdates.find(
+      (c) => (c.args[0] as Record<string, unknown>).transcript_raw !== undefined
+    )
+    expect(rawUpdate).toBeDefined()
+    expect(rawUpdate!.args[0]).toMatchObject({
+      transcript_raw: goodSTTResult.transcript,
+    })
+  })
+
+  it('inserts assessments with correct shape', async () => {
+    const supabase = makeFakeSupabase({ transcript_clean: goodScrubResult.clean })
+    await runPipeline(supabase as never, baseInput, baseConfig)
+
+    const inserts = supabase._assessmentInserts()
+    expect(inserts).toHaveLength(1)
+    const assessments = inserts[0] as Array<Record<string, unknown>>
+    expect(Array.isArray(assessments)).toBe(true)
+    expect(assessments[0]).toMatchObject({
+      session_id: baseInput.sessionId,
+      output_index: 1,
+      narrative_summary: 'Resident performed an excellent intubation.',
+    })
+  })
+
+  it('calls STT provider function (not the other provider)', async () => {
+    const supabase = makeFakeSupabase({ transcript_clean: goodScrubResult.clean })
+    await runPipeline(supabase as never, baseInput, baseConfig)
+
+    if (provider === 'deepgram') {
+      expect(mockTranscribeAudio).toHaveBeenCalled()
+      expect(mockTranscribeWithGemini).not.toHaveBeenCalled()
+    } else {
+      expect(mockTranscribeWithGemini).toHaveBeenCalled()
+      expect(mockTranscribeAudio).not.toHaveBeenCalled()
+    }
+  })
+
+  it('calls PHI/extract on the correct provider path', async () => {
+    const supabase = makeFakeSupabase({ transcript_clean: goodScrubResult.clean })
+    await runPipeline(supabase as never, baseInput, baseConfig)
+
+    if (provider === 'deepgram') {
+      expect(mockScrubTranscript).toHaveBeenCalled()
+      expect(mockExtractAssessment).toHaveBeenCalled()
+      expect(mockScrubAndExtractWithGemini).not.toHaveBeenCalled()
+    } else {
+      expect(mockScrubAndExtractWithGemini).toHaveBeenCalled()
+      expect(mockScrubTranscript).not.toHaveBeenCalled()
+      expect(mockExtractAssessment).not.toHaveBeenCalled()
+    }
   })
 })
