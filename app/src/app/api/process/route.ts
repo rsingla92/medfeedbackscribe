@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runPipeline, resolveProvider } from "@/lib/pipeline/index";
 import { isValidUUID } from "@/lib/uuid";
@@ -159,56 +159,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Run the pipeline (non-blocking from the client's perspective is optional;
-    // here we await so the caller knows when it completes)
-    await runPipeline(
-      supabase,
-      {
-        sessionId,
-        audioUrl,
-        language: (recording.language as "en" | "fr") || "en",
-        formTemplate: {
-          name: formTemplate.name,
-          extraction_mode: formTemplate.extraction_mode,
-          max_outputs: formTemplate.max_outputs,
-          fields: formTemplate.fields as Record<string, unknown>,
-          competency_framework: formTemplate.competency_framework,
+    // Fire-and-forget: schedule pipeline work AFTER the 202 response is sent.
+    // `after()` is Next.js 16's stable background-work API (graduated from
+    // `unstable_after` in v15.1.0). On Vercel it is backed by `waitUntil`,
+    // which keeps the serverless function alive until the callback settles —
+    // capped by the function's `maxDuration` (120 s, set in vercel.json).
+    // If the process exits before the callback completes (e.g. OOM kill),
+    // the pipeline will not finish; runPipeline handles partial failures by
+    // writing `processing_failed` to the session row, so the resident sees
+    // an error rather than a stuck spinner.
+    after(() =>
+      runPipeline(
+        supabase,
+        {
+          sessionId,
+          audioUrl,
+          language: (recording.language as "en" | "fr") || "en",
+          formTemplate: {
+            name: formTemplate.name,
+            extraction_mode: formTemplate.extraction_mode,
+            max_outputs: formTemplate.max_outputs,
+            fields: formTemplate.fields as Record<string, unknown>,
+            competency_framework: formTemplate.competency_framework,
+          },
+          preceptorEmail,
+          preceptorName,
+          residentName,
+          residentEmail,
+          rotationName,
+          sessionDate,
         },
-        preceptorEmail,
-        preceptorName,
-        residentName,
-        residentEmail,
-        rotationName,
-        sessionDate,
-      },
-      {
-        deepgramApiKey,
-        anthropicApiKey,
-        timeoutMs: TIMEOUT_MS,
-        gcpProjectId,
-      }
+        {
+          deepgramApiKey,
+          anthropicApiKey,
+          timeoutMs: TIMEOUT_MS,
+          gcpProjectId,
+        }
+      )
     );
 
-    return Response.json({ success: true });
+    return Response.json({ success: true, status: "processing" }, { status: 202 });
   } catch (error) {
+    // Only synchronous validation errors reach here (auth, UUID, DB lookups).
+    // runPipeline runs inside after() and handles its own errors internally.
     const message =
       error instanceof Error ? error.message : "Internal server error";
-    console.error("Pipeline trigger failed:", message);
-
-    // Update session status so user sees failure (not stuck in "processing")
-    try {
-      const body = await request.clone().json().catch(() => null);
-      if (body?.sessionId) {
-        const supabaseForUpdate = await createClient();
-        await supabaseForUpdate
-          .from("sessions")
-          .update({ status: "processing_failed" })
-          .eq("id", body.sessionId);
-      }
-    } catch {
-      // Best-effort status update
-    }
-
+    console.error("Process route error:", message);
     return Response.json({ error: message }, { status: 500 });
   }
 }
