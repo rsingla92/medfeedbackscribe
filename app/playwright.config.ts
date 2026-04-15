@@ -4,7 +4,8 @@ const PORT = process.env.E2E_PORT ? parseInt(process.env.E2E_PORT, 10) : 3099;
 const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
+  testMatch: ['**/e2e/**/*.spec.ts', '**/qa-audit/**/*.spec.ts'],
   reporter: [['list']],
   use: {
     baseURL: BASE_URL,
