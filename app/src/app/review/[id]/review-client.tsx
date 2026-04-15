@@ -17,12 +17,18 @@ function ProcessingView({
   pipelineStep,
   onRetry,
   failed,
+  stuck,
   transcriptPreview,
+  reprocessing,
+  reprocessError,
 }: {
   pipelineStep: string | null;
   onRetry: () => void;
   failed: boolean;
+  stuck: boolean;
   transcriptPreview: string | null;
+  reprocessing: boolean;
+  reprocessError: string | null;
 }) {
   const steps = [
     { key: "stt", label: "Transcribing audio" },
@@ -30,39 +36,69 @@ function ProcessingView({
     { key: "extract", label: "Analyzing feedback" },
   ];
 
-  if (failed) {
+  if (failed || stuck) {
+    const isStuck = stuck && !failed;
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error-bg">
-          <svg
-            className="h-8 w-8 text-error"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-            />
-          </svg>
+        <div
+          className={`flex h-16 w-16 items-center justify-center rounded-full ${
+            isStuck ? "bg-warning-bg" : "bg-error-bg"
+          }`}
+        >
+          {isStuck ? (
+            <svg
+              className="h-8 w-8 text-warning"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="h-8 w-8 text-error"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+              />
+            </svg>
+          )}
         </div>
         <div className="text-center space-y-2">
           <h2 className="text-lg font-semibold text-foreground">
-            Processing failed
+            {isStuck ? "Taking longer than expected" : "Processing failed"}
           </h2>
           <p className="text-sm text-muted max-w-xs">
-            Something went wrong while analyzing your recording. You can retry
-            the processing.
+            {isStuck
+              ? "This is taking longer than usual. If it's been more than 5 minutes, you can retry."
+              : "Something went wrong while analyzing your recording. You can retry the processing."}
           </p>
         </div>
+        {reprocessError && (
+          <p className="text-sm text-error text-center max-w-xs">{reprocessError}</p>
+        )}
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-[var(--radius-md)] bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          disabled={reprocessing}
+          className="rounded-[var(--radius-md)] bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Retry processing
+          {reprocessing
+            ? "Starting..."
+            : isStuck
+              ? "Looks stuck — retry?"
+              : "Retry processing"}
         </button>
       </div>
     );
@@ -611,6 +647,48 @@ function AudioPlayerBar({ audioUrl }: { audioUrl: string }) {
   );
 }
 
+// ── Reprocess Toast ────────────────────────────────────────────────────────────
+
+function ReprocessToast({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss: () => void;
+}) {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, 5000);
+    return () => clearTimeout(timer);
+  }, [onDismiss]);
+
+  return (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-[var(--radius-md)] bg-foreground px-4 py-3 shadow-lg">
+      <svg
+        className="h-4 w-4 shrink-0 text-accent"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={2}
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+        />
+      </svg>
+      <p className="text-sm font-medium text-white">{message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="ml-2 text-xs text-white/60 hover:text-white transition-colors"
+        aria-label="Dismiss"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 // ── Main Review Client Component ───────────────────────────────────────────────
 
 export default function ReviewClient({ session }: { session: SessionData }) {
@@ -629,6 +707,13 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [exportSuccess, setExportSuccess] = useState<"pdf" | "csv" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessError, setReprocessError] = useState<string | null>(null);
+  const [reprocessToast, setReprocessToast] = useState<string | null>(null);
+  // Track when polling started to detect stuck-processing state
+  const processingStartRef = useRef<number>(
+    session.status === "processing" ? Date.now() : 0
+  );
 
   // Security: only show PHI-scrubbed transcript. Never expose transcript_raw to client.
   const transcript = session.recording?.transcript_clean ?? null;
@@ -831,21 +916,38 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     }
   }, [session.id, hasUnsavedChanges, handleSave]);
 
-  // ── Retry processing ─────────────────────────────────────────────────────────
+  // ── Reprocess / Retry ────────────────────────────────────────────────────────
 
   const handleRetry = useCallback(async () => {
-    setSessionStatus("processing");
-    setPollingStep(null);
+    if (reprocessing) return;
+    setReprocessing(true);
+    setReprocessError(null);
+    setReprocessToast(null);
+
     try {
-      await fetch("/api/process", {
+      const res = await fetch("/api/reprocess", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: session.id }),
       });
+
+      if (res.status === 202) {
+        setReprocessToast("Reprocessing started. This may take a minute.");
+        setSessionStatus("processing");
+        setPollingStep(null);
+        processingStartRef.current = Date.now();
+      } else {
+        const body = await res.json().catch(() => ({ error: "Unknown error" }));
+        setReprocessError(
+          body.error ?? "Could not start reprocessing. Please try again."
+        );
+      }
     } catch {
-      setSessionStatus("processing_failed");
+      setReprocessError("Network error. Please check your connection and try again.");
+    } finally {
+      setReprocessing(false);
     }
-  }, [session.id]);
+  }, [session.id, reprocessing]);
 
   // ── Format date ──────────────────────────────────────────────────────────────
 
@@ -957,6 +1059,14 @@ export default function ReviewClient({ session }: { session: SessionData }) {
         </div>
       )}
 
+      {/* Reprocess toast (bottom-center, auto-dismiss) */}
+      {reprocessToast && (
+        <ReprocessToast
+          message={reprocessToast}
+          onDismiss={() => setReprocessToast(null)}
+        />
+      )}
+
       <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
         {/* ── Processing / Failed States ──────────────────────────────── */}
         {(sessionStatus === "processing" ||
@@ -965,7 +1075,14 @@ export default function ReviewClient({ session }: { session: SessionData }) {
             pipelineStep={pollingStep}
             onRetry={handleRetry}
             failed={sessionStatus === "processing_failed"}
+            stuck={
+              sessionStatus === "processing" &&
+              processingStartRef.current > 0 &&
+              Date.now() - processingStartRef.current > 5 * 60 * 1000
+            }
             transcriptPreview={transcriptPreview}
+            reprocessing={reprocessing}
+            reprocessError={reprocessError}
           />
         )}
 
