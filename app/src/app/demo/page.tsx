@@ -4,6 +4,13 @@ import { useState, useRef, useEffect } from "react";
 
 type DemoStep = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "processing" | "review";
 
+// Stable waveform bar heights — precomputed once to avoid Math.random() in render
+// (using Math.random() during render causes hydration mismatches and visual flicker)
+const WAVEFORM_HEIGHTS = Array.from({ length: 24 }, (_, i) => {
+  // Deterministic pseudo-random pattern using sine waves at different frequencies
+  return 20 + Math.round((Math.sin(i * 0.7) * 0.5 + 0.5) * 40 + (Math.sin(i * 1.3 + 1) * 0.5 + 0.5) * 20);
+});
+
 const PRECEPTORS = [
   "Dr. Sarah Thompson", "Dr. James Wu", "Dr. Priya Sharma",
   "Dr. Michael O'Brien", "Dr. Fatima Al-Hassan", "Dr. David Kim",
@@ -254,9 +261,9 @@ export default function DemoPage() {
           <div className="flex flex-col items-center space-y-6 py-8">
             {!isRecording ? (
               <>
-                <button type="button" onClick={startRecording}
+                <button type="button" onClick={startRecording} aria-label="Start recording"
                   className="flex h-24 w-24 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30">
-                  <svg className="h-10 w-10" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="h-10 w-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
                     <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
                   </svg>
@@ -273,9 +280,9 @@ export default function DemoPage() {
                   <span className="font-[family-name:var(--font-mono)] text-lg text-foreground">{fmt(elapsed)}</span>
                 </div>
                 <div className="flex items-center gap-1 h-16">
-                  {Array.from({ length: 24 }).map((_, i) => (
+                  {WAVEFORM_HEIGHTS.map((h, i) => (
                     <div key={i} className="w-1 rounded-full bg-accent"
-                      style={{ height: `${20 + Math.random() * 80}%`, animation: `pulse 0.5s ease-in-out ${i * 0.05}s infinite alternate` }} />
+                      style={{ height: `${h}%`, animation: `pulse 0.5s ease-in-out ${i * 0.05}s infinite alternate` }} />
                   ))}
                 </div>
                 <p className="text-sm text-muted">Hand your phone to your preceptor — or set it on the desk.</p>
