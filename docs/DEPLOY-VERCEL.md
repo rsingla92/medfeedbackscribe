@@ -47,17 +47,29 @@ In the Vercel Dashboard (https://vercel.com) under your project's Settings > Env
 |----------|----------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Your Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Your Supabase anonymous/public key |
-| `DEEPGRAM_API_KEY` | Yes | Deepgram API key for speech-to-text |
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude processing |
+| `GCP_PROJECT_ID` | Yes | GCP project ID where Vertex AI is enabled |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Yes | Path to the GCP service-account JSON key file (see note below) |
 | `RESEND_API_KEY` | No | Resend API key for email notifications |
+| `PROGRAM_ADMIN_EMAIL` | No | BCC address for all assessment notifications |
+
+### GCP Service Account Setup (Vertex AI — northamerica-northeast1)
+
+All STT, PHI scrubbing, and assessment extraction runs via Gemini 2.5 Flash on Vertex AI in **northamerica-northeast1 (Montreal)**. No Deepgram or Anthropic keys are needed.
+
+1. Create a GCP service account with `roles/aiplatform.user` in your GCP project.
+2. Download the JSON key file.
+3. In Vercel, add it as a file-based secret:
+   - Upload the JSON content as a Vercel environment variable (e.g., `GCP_SERVICE_ACCOUNT_JSON`).
+   - In your deployment environment, write the JSON to a temp file and set `GOOGLE_APPLICATION_CREDENTIALS` to that path. Alternatively, use Workload Identity Federation if deploying on GCP infrastructure.
+4. Confirm Vertex AI API is enabled and `gemini-2.5-flash-preview-04-17` is available in `northamerica-northeast1`.
 
 You can also set these via CLI:
 
 ```bash
 vercel env add NEXT_PUBLIC_SUPABASE_URL
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-vercel env add DEEPGRAM_API_KEY
-vercel env add ANTHROPIC_API_KEY
+vercel env add GCP_PROJECT_ID
+vercel env add GOOGLE_APPLICATION_CREDENTIALS
 vercel env add RESEND_API_KEY
 ```
 
