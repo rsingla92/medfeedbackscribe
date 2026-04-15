@@ -142,17 +142,19 @@ export async function runPipeline(
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown PHI scrub error";
       await logStep(supabase, input.sessionId, "phi_scrub", "failed", phiStart, message);
-      // Non-fatal: use raw transcript (regex pass already ran inline)
+      // PHI scrub failure is FATAL — never pass unredacted transcript to extraction
+      // or store it as the clean version. Mark the session failed so the user retries.
+      throw error;
     }
 
-    // Get the clean transcript (or fall back to raw)
+    // Get the clean transcript — never fall back to raw (raw may contain PHI)
     const { data: recording } = await supabase
       .from("recordings")
-      .select("transcript_clean, transcript_raw")
+      .select("transcript_clean")
       .eq("session_id", input.sessionId)
       .single();
 
-    const transcript = recording?.transcript_clean || recording?.transcript_raw || "";
+    const transcript = recording?.transcript_clean || "";
 
     // Timeout guard
     if (timeRemaining(pipelineStart, config.timeoutMs) < 30_000) {
