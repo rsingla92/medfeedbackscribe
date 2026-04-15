@@ -11,9 +11,9 @@ Supervising physicians give rich verbal feedback after clinical encounters but r
 ## How It Works
 
 1. **Record** — Resident taps record. Preceptor speaks for 1-2 minutes.
-2. **Transcribe** — Audio transcribed via Deepgram (English + French).
-3. **De-identify** — PHI scrubbed with regex pass, then Claude contextual pass.
-4. **Extract** — Claude maps verbal feedback to structured assessment fields (CanMEDS competencies, domains of care, coaching notes).
+2. **Transcribe** — Audio transcribed via Gemini 2.5 Flash (English + French/Québécois), running entirely in Montreal (northamerica-northeast1).
+3. **De-identify** — PHI scrubbed with a deterministic regex pass (26 pattern groups covering all 18 HIPAA identifiers + Canadian additions), then Gemini contextual pass, then regex again (belt-and-suspenders).
+4. **Extract** — Gemini maps verbal feedback to structured assessment fields (CanMEDS competencies, domains of care, coaching notes).
 5. **Review** — Resident reviews, edits, and exports as PDF or One45-compatible CSV.
 
 The preceptor does nothing extra. They just talk, like they already do. The resident is the user and the quality gate.
@@ -33,14 +33,13 @@ The preceptor does nothing extra. They just talk, like they already do. The resi
 
 - **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS 4, PWA
 - **Backend:** Supabase (Postgres, Auth, Storage, Edge Functions) in `ca-central-1`
-- **Speech-to-Text:** Deepgram (nova-2-medical)
-- **LLM:** Claude (Anthropic) for PHI scrubbing + assessment extraction
+- **Speech-to-Text + LLM:** Gemini 2.5 Flash via Vertex AI (`northamerica-northeast1` — Montreal) for STT, PHI scrubbing, and assessment extraction
 - **Email:** Resend (transactional)
 - **Testing:** Vitest + Testing Library (14 unit tests)
 
 ## Getting Started
 
-Prerequisites: [Bun](https://bun.sh), a [Supabase](https://supabase.com) project in ca-central-1, API keys for [Deepgram](https://deepgram.com), [Anthropic](https://console.anthropic.com), and optionally [Resend](https://resend.com).
+Prerequisites: [Bun](https://bun.sh), a [Supabase](https://supabase.com) project in ca-central-1, a [GCP project](https://console.cloud.google.com) with Vertex AI enabled in `northamerica-northeast1`, and optionally [Resend](https://resend.com).
 
 ```bash
 git clone https://github.com/rsingla92/medfeedbackscribe.git
@@ -67,7 +66,8 @@ Configure environment variables:
 ```bash
 cp .env.local.example .env.local
 # Fill in: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-#          DEEPGRAM_API_KEY, ANTHROPIC_API_KEY, RESEND_API_KEY (optional)
+#          GCP_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (path to service-account JSON)
+#          RESEND_API_KEY (optional)
 ```
 
 Run locally:
@@ -128,7 +128,7 @@ See [DESIGN.md](./DESIGN.md). Key choices:
 bun run test        # 14 unit tests
 ```
 
-Tests cover PHI regex scrubbing (8 tests) and LLM extraction prompt construction (6 tests). Prompt engineering spike verified 5/5 transcript types pass (brief, detailed, multi-encounter, vague, French).
+Tests cover comprehensive PHI regex scrubbing (71 tests across 17 describe blocks, all 18 HIPAA categories + Canadian additions), extraction prompt construction, Gemini pipeline, and process route validation.
 
 ## Demo
 

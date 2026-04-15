@@ -6,10 +6,9 @@ AI-powered voice-to-assessment platform for medical trainee feedback. Residents 
 ## Tech Stack
 - Frontend: Next.js 16 (App Router), React 19, Tailwind CSS 4, PWA
 - Backend: Supabase (Postgres, Auth, Storage) — all in ca-central-1
-- STT: Deepgram API (English + French)
-- LLM: Claude (Anthropic) for PHI scrubbing + assessment extraction
+- STT + LLM: Gemini 2.5 Flash via Vertex AI (northamerica-northeast1 — Montreal) for STT, PHI scrubbing + assessment extraction
 - Email: Resend (transactional)
-- Testing: Vitest + Testing Library (14 tests)
+- Testing: Vitest + Testing Library (268 tests)
 
 ## Design System
 Always read DESIGN.md before making any visual or UI decisions.
@@ -25,9 +24,10 @@ In QA mode, flag any code that doesn't match DESIGN.md.
 
 ## Architecture
 - Async pipeline: recording → upload → background processing → toast notification when ready
-- PHI scrubbing: regex first (fast), then LLM pass (contextual)
+- PHI scrubbing: belt-and-suspenders — regex first (26 pattern groups, all 18 HIPAA + Canadian), then Gemini contextual, then regex again. All on Canadian infrastructure.
 - One recording per trainee (no multi-trainee splitting)
 - Resident is the quality gate — reviews all LLM output before export
+- French/Québécois: production cutover complete — Gemini handles both languages natively
 
 ## Testing
 - Run tests: `bun run test`

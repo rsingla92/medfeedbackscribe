@@ -332,8 +332,9 @@ describe("scrubAndExtractWithGemini", () => {
     // The scrub prompt should NOT contain the raw MRN/phone (regex already replaced them)
     expect(capturedScrubPrompt).not.toContain("C123-4567");
     expect(capturedScrubPrompt).not.toContain("555-1234");
-    expect(capturedScrubPrompt).toContain("[MRN]");
-    expect(capturedScrubPrompt).toContain("[PHONE]");
+    // Regex now produces [REDACTED-MRN] and [REDACTED-PHONE] labels
+    expect(capturedScrubPrompt).toContain("[REDACTED-MRN]");
+    expect(capturedScrubPrompt).toContain("[REDACTED-PHONE]");
   });
 
   it("extraction prompt includes formTemplate field names", async () => {
@@ -480,7 +481,8 @@ describe("scrubAndExtractWithGemini", () => {
   });
 
   it("counts LLM redaction tags in totalRedactions", async () => {
-    const scrubbed = "Good feedback. [PATIENT] did well and [PATIENT] showed improvement.";
+    // Gemini now returns [REDACTED-NAME] style tags (not [PATIENT])
+    const scrubbed = "Good feedback. [REDACTED-NAME] did well and [REDACTED-NAME] showed improvement.";
     mockGenerateContent
       .mockResolvedValueOnce(makeVertexResponse(scrubbed))
       .mockResolvedValueOnce(makeVertexResponse(goodExtractionJson));
@@ -491,7 +493,7 @@ describe("scrubAndExtractWithGemini", () => {
       PROJECT_ID
     );
 
-    // 2 [PATIENT] tags from Gemini scrub pass
+    // 2 [REDACTED-NAME] tags from Gemini scrub pass
     expect(result.totalRedactions).toBeGreaterThanOrEqual(2);
   });
 
@@ -509,5 +511,97 @@ describe("scrubAndExtractWithGemini", () => {
     await scrubAndExtractWithGemini("Some raw transcript.", multiTemplate, PROJECT_ID);
 
     expect(capturedExtractPrompt).toContain(scrubbedText);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// French / Québécois production cutover
+// ---------------------------------------------------------------------------
+
+describe("French production cutover — Gemini request structure", () => {
+  beforeEach(() => {
+    _resetVertexClient();
+    mockGenerateContent = vi.fn();
+    setMockGenerateContent(mockGenerateContent);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("transcribeWithGemini sends Quebec French instruction for fr language", async () => {
+    vi.stubGlobal("fetch", makeAudioFetchMock(true));
+    mockGenerateContent.mockResolvedValue(
+      makeVertexResponse("Bon travail avec le patient aujourd'hui.")
+    );
+
+    const result = await transcribeWithGemini(AUDIO_URL, "fr", PROJECT_ID);
+
+    // Verify the Gemini call was made with a French prompt
+    const call = mockGenerateContent.mock.calls[0][0];
+    const textPart = call.contents[0].parts[1].text as string;
+    expect(textPart).toContain("Canadian French");
+    expect(textPart).toContain("Quebec");
+    expect(result.language).toBe("fr");
+  });
+
+  it("scrubAndExtractWithGemini PHI prompt explicitly lists Canadian health card types", async () => {
+    let capturedScrubPrompt = "";
+    mockGenerateContent
+      .mockImplementationOnce((req: { contents: Array<{ parts: Array<{ text?: string }> }> }) => {
+        capturedScrubPrompt = req.contents[0].parts[0].text ?? "";
+        return Promise.resolve(makeVertexResponse("Texte nettoyé."));
+      })
+      .mockResolvedValueOnce(makeVertexResponse(goodExtractionJson));
+
+    await scrubAndExtractWithGemini(
+      "Le résident a bien travaillé avec le patient.",
+      multiTemplate,
+      PROJECT_ID
+    );
+
+    // PHI prompt should list OHIP, BC PHN, RAMQ, AB PHN
+    expect(capturedScrubPrompt).toContain("OHIP");
+    expect(capturedScrubPrompt).toContain("RAMQ");
+    expect(capturedScrubPrompt).toContain("PHN");
+  });
+
+  it("scrubAndExtractWithGemini extraction prompt handles bilingual instruction", async () => {
+    let capturedExtractPrompt = "";
+    mockGenerateContent
+      .mockResolvedValueOnce(makeVertexResponse("Texte propre."))
+      .mockImplementationOnce((req: { contents: Array<{ parts: Array<{ text?: string }> }> }) => {
+        capturedExtractPrompt = req.contents[0].parts[0].text ?? "";
+        return Promise.resolve(makeVertexResponse(goodExtractionJson));
+      });
+
+    await scrubAndExtractWithGemini(
+      "Le résident a fait un excellent travail.",
+      multiTemplate,
+      PROJECT_ID
+    );
+
+    // Extraction prompt should mention French handling
+    expect(capturedExtractPrompt).toContain("Canadian French");
+    expect(capturedExtractPrompt).toContain("Québécois");
+  });
+
+  it("full French fixture: runs through regexScrub without over-redacting medical French", async () => {
+    // Use the fixture content — no PHI in this transcript
+    const frenchTranscript = `Bon, alors, je voulais te donner une rétroaction sur la consultation d'aujourd'hui en médecine interne.
+Dans l'ensemble, tu as fait un excellent travail avec le patient. Ta démarche diagnostique était bien structurée.
+Tu as correctement identifié le souffle systolique au foyer aortique.
+Pour la prochaine fois, développe tes habiletés en raisonnement clinique à voix haute.`;
+
+    // Use dynamic import with the module path resolved by vitest
+    const { regexScrub } = await import("@/lib/pipeline/phi-scrub");
+    const result = regexScrub(frenchTranscript);
+
+    // Medical French content should NOT be over-redacted
+    expect(result.text).toContain("médecine interne");
+    expect(result.text).toContain("raisonnement clinique");
+    expect(result.text).toContain("souffle systolique");
+    // No redactions in clean medical feedback
+    expect(result.redactions).toHaveLength(0);
   });
 });
