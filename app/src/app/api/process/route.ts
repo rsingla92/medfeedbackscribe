@@ -1,6 +1,6 @@
 import { NextRequest, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { runPipeline, resolveProvider } from "@/lib/pipeline/index";
+import { runPipeline } from "@/lib/pipeline/index";
 import { isValidUUID } from "@/lib/uuid";
 
 const TIMEOUT_MS = 120_000;
@@ -131,32 +131,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate environment variables based on active provider
-    const provider = resolveProvider();
-    const deepgramApiKey = process.env.DEEPGRAM_API_KEY ?? "";
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? "";
+    // Validate required Vertex AI environment variables
     const gcpProjectId = process.env.GCP_PROJECT_ID;
-
-    if (provider === "gemini") {
-      // Gemini path: GCP credentials must be available (via GOOGLE_APPLICATION_CREDENTIALS
-      // or Application Default Credentials on the hosting platform).
-      // GCP_PROJECT_ID is required for the Vertex AI client.
-      if (!gcpProjectId) {
-        console.error("Missing required env var: GCP_PROJECT_ID (needed for Gemini/Vertex AI)");
-        return Response.json(
-          { error: "Server configuration error" },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Deepgram legacy path
-      if (!deepgramApiKey || !anthropicApiKey) {
-        console.error("Missing required API keys: DEEPGRAM_API_KEY or ANTHROPIC_API_KEY");
-        return Response.json(
-          { error: "Server configuration error" },
-          { status: 500 }
-        );
-      }
+    if (!gcpProjectId) {
+      console.error("Missing required env var: GCP_PROJECT_ID (needed for Gemini/Vertex AI)");
+      return Response.json(
+        { error: "Server configuration error" },
+        { status: 500 }
+      );
     }
 
     // Fire-and-forget: schedule pipeline work AFTER the 202 response is sent.
@@ -164,10 +146,6 @@ export async function POST(request: NextRequest) {
     // `unstable_after` in v15.1.0). On Vercel it is backed by `waitUntil`,
     // which keeps the serverless function alive until the callback settles —
     // capped by the function's `maxDuration` (120 s, set in vercel.json).
-    // If the process exits before the callback completes (e.g. OOM kill),
-    // the pipeline will not finish; runPipeline handles partial failures by
-    // writing `processing_failed` to the session row, so the resident sees
-    // an error rather than a stuck spinner.
     after(() =>
       runPipeline(
         supabase,
@@ -190,8 +168,6 @@ export async function POST(request: NextRequest) {
           sessionDate,
         },
         {
-          deepgramApiKey,
-          anthropicApiKey,
           timeoutMs: TIMEOUT_MS,
           gcpProjectId,
         }

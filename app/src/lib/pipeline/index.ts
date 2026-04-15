@@ -1,37 +1,30 @@
 /**
- * Debrief Processing Pipeline (async)
+ * Debrief Processing Pipeline (async) — Gemini-only
  *
  * Orchestrates the full flow from audio to structured assessment:
  *
- *   audio ──▶ STT ──▶ regex PHI ──▶ LLM PHI ──▶ LLM extract ──▶ save ──▶ email
- *     │         │          │            │             │            │         │
- *     ▼         ▼          ▼            ▼             ▼            ▼         ▼
- *   upload  Deepgram/   fast/local  Claude/       Claude/     Postgres   Resend
- *           Gemini      patterns    Gemini        Gemini      + update    (optional)
- *           (flag)                  scrub         extract     status
+ *   audio ──▶ STT ──▶ regex PHI ──▶ Gemini PHI+extract ──▶ regex PHI ──▶ save ──▶ email
+ *     │         │          │               │                    │           │         │
+ *     ▼         ▼          ▼               ▼                    ▼           ▼         ▼
+ *   upload  Gemini      fast/local    contextual scrub     belt-and-    Postgres   Resend
+ *           multimodal  patterns      + structured         suspenders   + update   (optional)
+ *           audio STT   (regex)       extraction           regex pass   status
  *
- * Provider selection via STT_PROVIDER env var:
- *   'gemini'   → Vertex AI Gemini 2.5 Flash in northamerica-northeast1 (Montreal)
- *   'deepgram' → Deepgram nova-2-medical + Anthropic Claude (legacy path)
- *   (unset)    → defaults to 'gemini' when GOOGLE_APPLICATION_CREDENTIALS is set,
- *               else falls back to 'deepgram'.
+ * All PHI processing runs on Vertex AI northamerica-northeast1 (Montreal).
+ * Defense-in-depth: regex PHI pass runs BEFORE and AFTER Gemini contextual pass.
  *
  * Timeout guard: saves partial progress if approaching Edge Function limit.
  * Each step is logged to pipeline_logs for observability.
  */
 
-import { transcribeAudio, type STTResult } from "./stt";
-import { scrubTranscript } from "./phi-scrub";
-import { extractAssessment, type ExtractionResult } from "./extract";
-import { transcribeWithGemini, scrubAndExtractWithGemini } from "./gemini";
+import { scrubAndExtractWithGemini, transcribeWithGemini } from "./gemini";
+import type { STTResult } from "./gemini";
+import type { ExtractionResult } from "./extract";
 import { sendAssessmentNotification } from "@/lib/email";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface PipelineConfig {
-  deepgramApiKey: string;
-  anthropicApiKey: string;
   timeoutMs: number; // Edge Function budget
-  // Gemini/Vertex AI (optional — only required when STT_PROVIDER=gemini)
   gcpProjectId?: string;
 }
 
@@ -52,14 +45,6 @@ interface PipelineInput {
   residentEmail?: string;
   rotationName?: string | null;
   sessionDate?: string;
-}
-
-/** Resolve which provider to use based on env vars. */
-export function resolveProvider(): "gemini" | "deepgram" {
-  const explicit = process.env.STT_PROVIDER;
-  if (explicit === "gemini" || explicit === "deepgram") return explicit;
-  // Default: gemini if GCP credentials are configured, else deepgram
-  return process.env.GOOGLE_APPLICATION_CREDENTIALS ? "gemini" : "deepgram";
 }
 
 async function logStep(
@@ -91,7 +76,7 @@ export async function runPipeline(
   config: PipelineConfig
 ): Promise<void> {
   const pipelineStart = Date.now();
-  const provider = resolveProvider();
+  const projectId = config.gcpProjectId ?? process.env.GCP_PROJECT_ID ?? "";
 
   // Update session status to processing
   await supabase
@@ -100,262 +85,124 @@ export async function runPipeline(
     .eq("id", input.sessionId);
 
   try {
-    if (provider === "gemini") {
-      // ======================================================================
-      // GEMINI PATH (Vertex AI northamerica-northeast1 — all PHI stays in CA)
-      // ======================================================================
+    // ======================================================================
+    // GEMINI PATH (Vertex AI northamerica-northeast1 — all PHI stays in CA)
+    // ======================================================================
 
-      const projectId = config.gcpProjectId ?? process.env.GCP_PROJECT_ID ?? "";
+    // === Step 1: Speech-to-Text (Gemini multimodal) ===
+    const sttStart = Date.now();
+    let sttResult: STTResult;
 
-      // === Step 1: Speech-to-Text (Gemini multimodal) ===
-      const sttStart = Date.now();
-      let sttResult: STTResult;
-
-      try {
-        sttResult = await transcribeWithGemini(
-          input.audioUrl,
-          input.language,
-          projectId
-        );
-        await logStep(supabase, input.sessionId, "stt", "completed", sttStart, undefined, {
-          confidence: sttResult.confidence,
-          duration_seconds: sttResult.duration_seconds,
-          provider: "gemini",
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown STT error";
-        await logStep(supabase, input.sessionId, "stt", "failed", sttStart, message);
-        throw error;
-      }
-
-      // Save raw transcript
-      await supabase
-        .from("recordings")
-        .update({
-          transcript_raw: sttResult.transcript,
-          duration_seconds: sttResult.duration_seconds,
-          stt_confidence: sttResult.confidence,
-          language: sttResult.language,
-        })
-        .eq("session_id", input.sessionId);
-
-      // Timeout guard
-      if (timeRemaining(pipelineStart, config.timeoutMs) < 30_000) {
-        await logStep(supabase, input.sessionId, "timeout_guard", "triggered", pipelineStart);
-        await supabase
-          .from("sessions")
-          .update({ status: "processing_failed" })
-          .eq("id", input.sessionId);
-        return;
-      }
-
-      // === Step 2+3: PHI scrub + extraction (Gemini, combined) ===
-      const phiStart = Date.now();
-      let extraction: ExtractionResult;
-
-      try {
-        const result = await scrubAndExtractWithGemini(
-          sttResult.transcript,
-          input.formTemplate,
-          projectId
-        );
-
-        await supabase
-          .from("recordings")
-          .update({ transcript_clean: result.clean })
-          .eq("session_id", input.sessionId);
-
-        await logStep(supabase, input.sessionId, "phi_scrub", "completed", phiStart, undefined, {
-          redactions: result.totalRedactions,
-          provider: "gemini",
-        });
-
-        const extractStart = Date.now();
-        extraction = result.extraction;
-        await logStep(
-          supabase,
-          input.sessionId,
-          "extract",
-          "completed",
-          extractStart,
-          undefined,
-          { outputs: extraction.outputs.length, model: extraction.model }
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown Gemini error";
-
-        // Determine which step failed based on error message
-        if (
-          message.startsWith("EXTRACTION_") ||
-          message === "EXTRACTION_EMPTY_RESPONSE"
-        ) {
-          await logStep(supabase, input.sessionId, "phi_scrub", "completed", phiStart);
-          await logStep(supabase, input.sessionId, "extract", "failed", phiStart, message);
-        } else {
-          await logStep(supabase, input.sessionId, "phi_scrub", "failed", phiStart, message);
-        }
-        throw error;
-      }
-
-      // === Step 4: Save Assessments ===
-      const assessments = extraction.outputs.map((output) => ({
-        session_id: input.sessionId,
-        output_index: output.output_index,
-        structured_fields: output.structured_fields,
-        competency_tags: output.competency_tags,
-        narrative_summary: output.narrative_summary,
-        coaching_did_well: output.coaching_did_well || null,
-        coaching_consider: output.coaching_consider || null,
-        llm_confidence: output.confidence,
-      }));
-
-      await supabase.from("assessments").insert(assessments);
-
-      await supabase
-        .from("sessions")
-        .update({ status: "ready" })
-        .eq("id", input.sessionId);
-
-      // === Step 5: Email (non-blocking) ===
-      await _sendEmail(supabase, input, extraction, pipelineStart);
-
-    } else {
-      // ======================================================================
-      // DEEPGRAM PATH (legacy — kept for rollback)
-      // ======================================================================
-
-      // === Step 1: Speech-to-Text ===
-      const sttStart = Date.now();
-      let sttResult: STTResult;
-
-      try {
-        sttResult = await transcribeAudio(
-          input.audioUrl,
-          input.language,
-          config.deepgramApiKey
-        );
-        await logStep(supabase, input.sessionId, "stt", "completed", sttStart, undefined, {
-          confidence: sttResult.confidence,
-          duration_seconds: sttResult.duration_seconds,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown STT error";
-        await logStep(supabase, input.sessionId, "stt", "failed", sttStart, message);
-        throw error;
-      }
-
-      // Save raw transcript
-      await supabase
-        .from("recordings")
-        .update({
-          transcript_raw: sttResult.transcript,
-          duration_seconds: sttResult.duration_seconds,
-          stt_confidence: sttResult.confidence,
-          language: sttResult.language,
-        })
-        .eq("session_id", input.sessionId);
-
-      // Timeout guard: check remaining time
-      if (timeRemaining(pipelineStart, config.timeoutMs) < 30_000) {
-        await logStep(supabase, input.sessionId, "timeout_guard", "triggered", pipelineStart);
-        await supabase
-          .from("sessions")
-          .update({ status: "processing_failed" })
-          .eq("id", input.sessionId);
-        return;
-      }
-
-      // === Step 2: PHI Scrubbing (regex + LLM) ===
-      const phiStart = Date.now();
-      try {
-        const scrubResult = await scrubTranscript(
-          sttResult.transcript,
-          config.anthropicApiKey
-        );
-
-        await supabase
-          .from("recordings")
-          .update({ transcript_clean: scrubResult.clean })
-          .eq("session_id", input.sessionId);
-
-        await logStep(supabase, input.sessionId, "phi_scrub", "completed", phiStart, undefined, {
-          redactions: scrubResult.totalRedactions,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown PHI scrub error";
-        await logStep(supabase, input.sessionId, "phi_scrub", "failed", phiStart, message);
-        // PHI scrub failure is FATAL — never pass unredacted transcript to extraction
-        // or store it as the clean version. Mark the session failed so the user retries.
-        throw error;
-      }
-
-      // Get the clean transcript — never fall back to raw (raw may contain PHI)
-      const { data: recording } = await supabase
-        .from("recordings")
-        .select("transcript_clean")
-        .eq("session_id", input.sessionId)
-        .single();
-
-      const transcript = recording?.transcript_clean || "";
-
-      // Timeout guard
-      if (timeRemaining(pipelineStart, config.timeoutMs) < 30_000) {
-        await logStep(supabase, input.sessionId, "timeout_guard", "triggered", pipelineStart);
-        await supabase
-          .from("sessions")
-          .update({ status: "processing_failed" })
-          .eq("id", input.sessionId);
-        return;
-      }
-
-      // === Step 3: LLM Assessment Extraction ===
-      const extractStart = Date.now();
-      let extraction: ExtractionResult;
-
-      try {
-        extraction = await extractAssessment(
-          transcript,
-          input.formTemplate,
-          config.anthropicApiKey
-        );
-        await logStep(
-          supabase,
-          input.sessionId,
-          "extract",
-          "completed",
-          extractStart,
-          undefined,
-          { outputs: extraction.outputs.length, model: extraction.model }
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown extraction error";
-        await logStep(supabase, input.sessionId, "extract", "failed", extractStart, message);
-        throw error;
-      }
-
-      // === Step 4: Save Assessments ===
-      const assessments = extraction.outputs.map((output) => ({
-        session_id: input.sessionId,
-        output_index: output.output_index,
-        structured_fields: output.structured_fields,
-        competency_tags: output.competency_tags,
-        narrative_summary: output.narrative_summary,
-        coaching_did_well: output.coaching_did_well || null,
-        coaching_consider: output.coaching_consider || null,
-        llm_confidence: output.confidence,
-      }));
-
-      await supabase.from("assessments").insert(assessments);
-
-      // Update session status to ready
-      await supabase
-        .from("sessions")
-        .update({ status: "ready" })
-        .eq("id", input.sessionId);
-
-      // === Step 5: Email notifications (optional, non-blocking) ===
-      await _sendEmail(supabase, input, extraction, pipelineStart);
+    try {
+      sttResult = await transcribeWithGemini(
+        input.audioUrl,
+        input.language,
+        projectId
+      );
+      await logStep(supabase, input.sessionId, "stt", "completed", sttStart, undefined, {
+        confidence: sttResult.confidence,
+        duration_seconds: sttResult.duration_seconds,
+        provider: "gemini",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown STT error";
+      await logStep(supabase, input.sessionId, "stt", "failed", sttStart, message);
+      throw error;
     }
+
+    // Save raw transcript
+    await supabase
+      .from("recordings")
+      .update({
+        transcript_raw: sttResult.transcript,
+        duration_seconds: sttResult.duration_seconds,
+        stt_confidence: sttResult.confidence,
+        language: sttResult.language,
+      })
+      .eq("session_id", input.sessionId);
+
+    // Timeout guard
+    if (timeRemaining(pipelineStart, config.timeoutMs) < 30_000) {
+      await logStep(supabase, input.sessionId, "timeout_guard", "triggered", pipelineStart);
+      await supabase
+        .from("sessions")
+        .update({ status: "processing_failed" })
+        .eq("id", input.sessionId);
+      return;
+    }
+
+    // === Step 2+3: PHI scrub (regex→Gemini→regex) + extraction (Gemini) ===
+    // scrubAndExtractWithGemini runs the full belt-and-suspenders pipeline:
+    //   regexScrub → Gemini contextual scrub → regexScrub again → Gemini extract
+    const phiStart = Date.now();
+    let extraction: ExtractionResult;
+
+    try {
+      const result = await scrubAndExtractWithGemini(
+        sttResult.transcript,
+        input.formTemplate,
+        projectId
+      );
+
+      await supabase
+        .from("recordings")
+        .update({ transcript_clean: result.clean })
+        .eq("session_id", input.sessionId);
+
+      await logStep(supabase, input.sessionId, "phi_scrub", "completed", phiStart, undefined, {
+        redactions: result.totalRedactions,
+        provider: "gemini",
+      });
+
+      const extractStart = Date.now();
+      extraction = result.extraction;
+      await logStep(
+        supabase,
+        input.sessionId,
+        "extract",
+        "completed",
+        extractStart,
+        undefined,
+        { outputs: extraction.outputs.length, model: extraction.model }
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown Gemini error";
+
+      // Determine which step failed based on error message
+      if (
+        message.startsWith("EXTRACTION_") ||
+        message === "EXTRACTION_EMPTY_RESPONSE"
+      ) {
+        await logStep(supabase, input.sessionId, "phi_scrub", "completed", phiStart);
+        await logStep(supabase, input.sessionId, "extract", "failed", phiStart, message);
+      } else {
+        await logStep(supabase, input.sessionId, "phi_scrub", "failed", phiStart, message);
+      }
+      throw error;
+    }
+
+    // === Step 4: Save Assessments ===
+    const assessments = extraction.outputs.map((output) => ({
+      session_id: input.sessionId,
+      output_index: output.output_index,
+      structured_fields: output.structured_fields,
+      competency_tags: output.competency_tags,
+      narrative_summary: output.narrative_summary,
+      coaching_did_well: output.coaching_did_well || null,
+      coaching_consider: output.coaching_consider || null,
+      llm_confidence: output.confidence,
+    }));
+
+    await supabase.from("assessments").insert(assessments);
+
+    await supabase
+      .from("sessions")
+      .update({ status: "ready" })
+      .eq("id", input.sessionId);
+
+    // === Step 5: Email (non-blocking) ===
+    await _sendEmail(supabase, input, extraction, pipelineStart);
+
   } catch (error) {
     // Pipeline failed — mark session
     await supabase
@@ -368,7 +215,7 @@ export async function runPipeline(
   }
 }
 
-/** Shared email step (used by both provider paths). */
+/** Email step (non-blocking, failure does not mark session as failed). */
 async function _sendEmail(
   supabase: SupabaseClient,
   input: PipelineInput,
@@ -450,6 +297,5 @@ async function _sendEmail(
     await logStep(supabase, input.sessionId, "email", "failed", emailStart, message);
     // Non-fatal: email failure doesn't block assessment
   }
-  // Suppress unused variable warning for pipelineStart in email helper
   void pipelineStart;
 }

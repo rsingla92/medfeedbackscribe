@@ -1,13 +1,18 @@
 /**
- * Gemini 2.5 via Vertex AI (northamerica-northeast1 — Montreal)
+ * Gemini 2.5 Flash via Vertex AI (northamerica-northeast1 — Montreal)
  *
  * All PHI processing stays on Canadian infrastructure, satisfying
  * PHIPA/PIPEDA requirements identified in architecture-review-2026-04-14 F-02.
  *
- * Two functions mirror the existing Deepgram/Anthropic interface:
+ * Functions:
+ *   transcribeWithGemini        — audio → STTResult
+ *   scrubAndExtractWithGemini   — transcript + template → { clean, extraction }
  *
- *   transcribeWithGemini  — audio → STTResult
- *   scrubAndExtractWithGemini — transcript + template → { clean, extraction }
+ * PHI defense-in-depth (belt-and-suspenders):
+ *   1. regexScrub()  — fast deterministic pass BEFORE Gemini sees any text
+ *   2. Gemini PHI scrub — contextual pass (names, implicit identifiers)
+ *   3. regexScrub()  — second deterministic pass AFTER Gemini output
+ *      (catches drift / hallucinated PHI leakage)
  *
  * Region note: Gemini 2.5 Flash is used because Gemini 2.5 Pro was not yet
  * Generally Available in northamerica-northeast1 (Montreal) at the time this
@@ -17,9 +22,19 @@
  */
 
 import { VertexAI, type GenerateContentRequest } from "@google-cloud/vertexai";
-import type { STTResult } from "./stt";
 import type { ExtractionResult } from "./extract";
 import { regexScrub } from "./phi-scrub";
+
+// ---------------------------------------------------------------------------
+// Type re-export so index.ts doesn't need to import stt.ts
+// ---------------------------------------------------------------------------
+
+export interface STTResult {
+  transcript: string;
+  confidence: number;
+  duration_seconds: number;
+  language: string;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -50,6 +65,68 @@ export function _resetVertexClient(): void {
 }
 
 // ---------------------------------------------------------------------------
+// PHI Scrub prompt — all 18 HIPAA categories + Canadian additions
+// ---------------------------------------------------------------------------
+
+const PHI_SCRUB_PROMPT = `You are a strict PHI (Protected Health Information) scrubber for Canadian medical education transcripts.
+
+This transcript is of a preceptor giving feedback to a medical trainee about their clinical performance. Preceptors occasionally mention patient details accidentally. Your job is to detect and redact ALL patient-identifying information.
+
+REPLACE each instance with the corresponding tag (use this exact format):
+
+| PHI Category | Tag |
+|---|---|
+| Patient names (first, last, full) | [REDACTED-NAME] |
+| Geographic locations smaller than province: addresses, neighbourhoods, specific hospital units | [REDACTED-LOCATION] |
+| Dates other than year alone (encounter dates, DOB, admission dates) | [REDACTED-DATE] |
+| Phone numbers | [REDACTED-PHONE] |
+| Fax numbers | [REDACTED-FAX] |
+| Email addresses | [REDACTED-EMAIL] |
+| US Social Security Numbers | [REDACTED-SSN] |
+| Canadian Social Insurance Numbers (SIN) | [REDACTED-SIN] |
+| Medical Record Numbers (MRN, Chart #, Patient #) | [REDACTED-MRN] |
+| Health plan / insurance policy numbers | [REDACTED-POLICY] |
+| Account numbers | [REDACTED-ACCOUNT] |
+| Driver's license, professional license numbers | [REDACTED-LICENSE] |
+| Vehicle Identification Numbers (VIN), license plates | [REDACTED-VEHICLE] |
+| Device identifiers (pacemaker IDs, implant serials) | [REDACTED-DEVICE-ID] |
+| URLs or IP addresses | [REDACTED-URL] |
+| Biometric identifiers (fingerprints, retinal data) | [REDACTED-BIOMETRIC] |
+| Provincial health card numbers (OHIP, BC PHN, RAMQ, AB PHN) | [REDACTED-HEALTH-CARD] |
+| Canadian postal codes (PHI for areas < 20,000 population) | [REDACTED-POSTAL] |
+| Any other unique identifier that could identify a specific patient | [REDACTED-PHI] |
+
+DO NOT redact:
+- The preceptor's name or the trainee's name (these are educators/learners, NOT patients)
+- Medical eponyms (Crohn disease, Down syndrome, Parkinson's, etc.)
+- Medical terminology, diagnoses, procedures, medications (educational content)
+- General references like "the patient", "your patient", "a patient"
+- The current year alone (e.g., "2026" by itself is NOT a date — only redact full dates)
+- Institution names used generically (e.g., "the hospital", "emergency department")
+
+FEW-SHOT EXAMPLES (English):
+Input:  "Good work with Mrs. Patterson in room 214 last Tuesday the 8th."
+Output: "Good work with [REDACTED-NAME] in [REDACTED-ROOM] [REDACTED-DATE]."
+
+Input:  "The patient's MRN is H987-6543 and they were born on March 15, 1990."
+Output: "The patient's [REDACTED-MRN] and they were born on [REDACTED-DATE]."
+
+Input:  "Call the family at (604) 777-8899 or email smith@gmail.com."
+Output: "Call the family at [REDACTED-PHONE] or email [REDACTED-EMAIL]."
+
+FEW-SHOT EXAMPLES (French / Québécois):
+Input:  "Bon travail avec M. Tremblay dans la salle 3B le 12 mars."
+Output: "Bon travail avec [REDACTED-NAME] dans [REDACTED-ROOM] [REDACTED-DATE]."
+
+Input:  "Le patient, né le 5 janvier 1985, a un numéro RAMQ TREM 8501 0512."
+Output: "Le patient, né le [REDACTED-DATE], a un numéro RAMQ [REDACTED-HEALTH-CARD]."
+
+Input:  "Contactez la famille au (514) 555-9876 ou à info@example.ca."
+Output: "Contactez la famille au [REDACTED-PHONE] ou à [REDACTED-EMAIL]."
+
+Return ONLY the scrubbed transcript with no explanation, preamble, or trailing comment.`;
+
+// ---------------------------------------------------------------------------
 // Speech-to-Text via Gemini multimodal input
 // ---------------------------------------------------------------------------
 
@@ -60,8 +137,7 @@ export function _resetVertexClient(): void {
  * Here we fetch the signed Supabase Storage URL and pass the raw bytes
  * as inline data so we avoid an intermediate GCS bucket.
  *
- * Returns the same STTResult shape as transcribeAudio (Deepgram) so the
- * pipeline orchestrator can call either interchangeably.
+ * Returns an STTResult shape compatible with the pipeline orchestrator.
  */
 export async function transcribeWithGemini(
   audioUrl: string,
@@ -95,7 +171,7 @@ export async function transcribeWithGemini(
 
   const languageInstruction =
     language === "fr"
-      ? "The audio is in Canadian French (Quebec). Transcribe in French."
+      ? "L'audio est en français canadien (québécois). Transcrivez en français. / The audio is in Canadian French (Quebec). Transcribe in French."
       : "The audio is in Canadian English. Transcribe in English.";
 
   const request: GenerateContentRequest = {
@@ -117,7 +193,8 @@ Transcribe the spoken audio exactly as said. This is a medical preceptor giving 
 Rules:
 - Transcribe verbatim. Do not summarize or paraphrase.
 - Preserve hesitations, fillers (um, uh) if medically relevant context might be lost otherwise.
-- Use standard medical terminology spelling.
+- Use standard medical terminology spelling (English or French as appropriate).
+- For Quebec French: use standard Canadian French spelling and medical terminology.
 - Return ONLY the transcript text. No preamble, no explanation.`,
           },
         ],
@@ -142,7 +219,7 @@ Rules:
 }
 
 // ---------------------------------------------------------------------------
-// PHI scrub + assessment extraction (combined Gemini call)
+// PHI scrub + assessment extraction (combined Gemini session)
 // ---------------------------------------------------------------------------
 
 interface FormTemplate {
@@ -153,22 +230,21 @@ interface FormTemplate {
   competency_framework: string;
 }
 
-interface GeminiScrubExtractResult {
+export interface GeminiScrubExtractResult {
   clean: string;
   totalRedactions: number;
   extraction: ExtractionResult;
 }
 
 /**
- * Two-pass PHI scrubbing (regex then Gemini) followed by structured
- * assessment extraction — all in a single Vertex AI session.
+ * Three-pass PHI scrubbing followed by structured assessment extraction.
  *
- * Separation rationale: we use TWO Gemini calls to maximise quality:
- *   1. PHI scrub call — focused context window, less hallucination risk.
- *   2. Extraction call — receives the already-scrubbed text.
- * The overhead is small vs. the safety benefit of a dedicated scrub pass.
+ * Pass 1 (regex)   — fast, deterministic, runs before Gemini sees any text
+ * Pass 2 (Gemini)  — contextual PHI scrub (names, implicit identifiers)
+ * Pass 3 (regex)   — belt-and-suspenders after Gemini; logs if extra PHI found
  *
- * Defense in depth: regex pass always runs first (cheap, boundary layer).
+ * Then a separate Gemini call performs structured assessment extraction on the
+ * double-scrubbed text.
  */
 export async function scrubAndExtractWithGemini(
   rawTranscript: string,
@@ -178,48 +254,32 @@ export async function scrubAndExtractWithGemini(
   const vertex = getVertexClient(projectId);
   const model = vertex.preview.getGenerativeModel({ model: GEMINI_MODEL });
 
-  // ── Pass 1: regex (boundary layer, always runs) ──────────────────────────
-  const regexResult = regexScrub(rawTranscript);
-  const afterRegex = regexResult.text;
-  const regexRedactionCount = regexResult.redactions.reduce(
+  // ── Pass 1: regex (deterministic boundary layer) ─────────────────────────
+  const regexResult1 = regexScrub(rawTranscript);
+  const afterRegex1 = regexResult1.text;
+  const regexRedactionCount1 = regexResult1.redactions.reduce(
     (sum, r) => sum + r.count,
     0
   );
 
-  // ── Pass 2: Gemini PHI scrub (contextual) ───────────────────────────────
+  // ── Pass 2: Gemini contextual PHI scrub ──────────────────────────────────
   const scrubRequest: GenerateContentRequest = {
     contents: [
       {
         role: "user",
         parts: [
           {
-            text: `You are a PHI (Protected Health Information) scrubber for medical education transcripts.
-
-This transcript is of a preceptor giving feedback to a medical trainee about their clinical performance. It should NOT contain patient-identifying information, but sometimes preceptors accidentally mention patient details.
-
-Replace any patient-identifying information with appropriate tags:
-- Patient names → [PATIENT]
-- Patient ages (when identifying) → [AGE]
-- Specific dates of patient encounters → [DATE]
-- Room numbers or bed numbers → [ROOM]
-- Any other information that could identify a specific patient → [PHI]
-
-Do NOT redact:
-- The preceptor's name or the trainee's name (these are NOT patients)
-- Medical terminology, diagnoses, or procedures (these are educational content)
-- General references like "the patient" or "your patient"
-
-Return ONLY the scrubbed transcript with no explanation or preamble.
+            text: `${PHI_SCRUB_PROMPT}
 
 TRANSCRIPT:
-${afterRegex}`,
+${afterRegex1}`,
           },
         ],
       },
     ],
   };
 
-  let cleanTranscript = afterRegex;
+  let cleanTranscript = afterRegex1;
   let llmRedactionCount = 0;
 
   try {
@@ -229,7 +289,8 @@ ${afterRegex}`,
 
     if (scrubText) {
       cleanTranscript = scrubText;
-      const redactionTags = scrubText.match(/\[(PATIENT|AGE|DATE|ROOM|PHI)\]/g);
+      // Count all [REDACTED-*] tags from Gemini output
+      const redactionTags = scrubText.match(/\[REDACTED-[A-Z_-]+\]/g);
       llmRedactionCount = redactionTags?.length ?? 0;
     }
   } catch (err) {
@@ -237,9 +298,26 @@ ${afterRegex}`,
     console.error("Gemini PHI scrub failed, falling back to regex-only:", err);
   }
 
-  const totalRedactions = regexRedactionCount + llmRedactionCount;
+  // ── Pass 3: regex again (belt-and-suspenders) ────────────────────────────
+  const regexResult2 = regexScrub(cleanTranscript);
+  const afterRegex2 = regexResult2.text;
+  const regexRedactionCount2 = regexResult2.redactions.reduce(
+    (sum, r) => sum + r.count,
+    0
+  );
 
-  // ── Pass 3: Gemini extraction ─────────────────────────────────────────────
+  if (regexRedactionCount2 > 0) {
+    // Signal Gemini drift — helpful for monitoring prompt degradation
+    console.warn(
+      `[phi-belt-and-suspenders] Second regex pass found ${regexRedactionCount2} additional PHI items that Gemini missed:`,
+      regexResult2.redactions
+    );
+  }
+
+  cleanTranscript = afterRegex2;
+  const totalRedactions = regexRedactionCount1 + llmRedactionCount + regexRedactionCount2;
+
+  // ── Gemini extraction ─────────────────────────────────────────────────────
   const modeInstruction =
     formTemplate.extraction_mode === "multi"
       ? `This transcript may contain feedback on MULTIPLE distinct activities or patient encounters.
@@ -258,6 +336,8 @@ Do NOT split artificially — only when the preceptor clearly moves to a differe
           {
             text: `You are an expert medical education assessment extractor. A preceptor just gave verbal feedback to a medical trainee. Your job is to extract structured assessment data from their spoken feedback.
 
+This transcript may be in English or Canadian French (Québécois). Extract faithfully from either language and populate the fields in English unless the field value is a direct quote.
+
 FORM TYPE: ${formTemplate.name}
 COMPETENCY FRAMEWORK: ${formTemplate.competency_framework}
 
@@ -273,6 +353,10 @@ RULES:
 - For text fields, paraphrase the preceptor's words into professional assessment language.
 - For tag fields (skill dimension, domain of care, priority topics), select from the provided options only.
 - Include a confidence score (0.0-1.0) for each field based on how clearly the preceptor addressed it.
+
+FEW-SHOT EXAMPLE (French input → English output):
+Transcript: "Le résident a fait un excellent travail avec l'intubation. Technique fluide, bonne communication."
+→ narrative_summary: "Resident demonstrated excellent intubation technique with smooth execution and good communication."
 
 OUTPUT FORMAT (JSON):
 {

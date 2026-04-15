@@ -1,20 +1,13 @@
 /**
- * LLM Assessment Extraction
+ * LLM Assessment Extraction — Gemini-only
  *
- * Takes a clean transcript + form template → structured assessment(s)
+ * This module now serves as a thin type + prompt helper layer.
+ * Actual extraction is performed by scrubAndExtractWithGemini() in gemini.ts,
+ * which combines PHI scrubbing + extraction in a single Vertex AI session.
  *
- * Two modes:
- *   MULTI (T-Res Field Notes): 1-5 outputs per transcript
- *   SINGLE (One45 Daily Eval): 1 output per transcript
- *
- *   transcript ──▶ Claude ──▶ Assessment[]
- *       │                         │
- *   template                  1-5 structured
- *   (JSON schema)             field notes or
- *                             1 evaluation form
+ * buildExtractionPrompt() is exported for unit-test coverage and for
+ * constructing the extraction prompt text that is embedded in the Gemini call.
  */
-
-import Anthropic from "@anthropic-ai/sdk";
 
 export interface ExtractionResult {
   outputs: AssessmentOutput[];
@@ -39,6 +32,10 @@ interface FormTemplate {
   competency_framework: string;
 }
 
+/**
+ * Build the extraction prompt used by Gemini (and covered by unit tests).
+ * Pure function — no side effects.
+ */
 export function buildExtractionPrompt(
   transcript: string,
   template: FormTemplate
@@ -90,68 +87,14 @@ TRANSCRIPT:
 ${transcript}`;
 }
 
-export async function extractAssessment(
-  transcript: string,
-  template: FormTemplate,
-  apiKey: string
-): Promise<ExtractionResult> {
-  const client = new Anthropic({ apiKey });
-  const prompt = buildExtractionPrompt(transcript, template);
-
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 8192,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = response.content[0];
-  if (content.type !== "text") {
-    throw new Error("EXTRACTION_EMPTY_RESPONSE");
-  }
-
-  // Extract JSON from response (may be wrapped in markdown code block)
-  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    // Log only non-content metadata — the response may contain PHI if PHI
-    // scrubbing fell back to transcript_raw, so we must not log its contents.
-    console.error(
-      `EXTRACTION_PARSE_ERROR: no JSON found in response (response length: ${content.text.length})`
-    );
-    throw new Error("EXTRACTION_PARSE_ERROR: no JSON found in response");
-  }
-
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    if (!parsed.outputs || !Array.isArray(parsed.outputs)) {
-      throw new Error("EXTRACTION_INVALID_FORMAT");
-    }
-
-    // Enforce max outputs
-    const outputs = parsed.outputs.slice(0, template.max_outputs);
-
-    return {
-      outputs: outputs.map(
-        (o: Record<string, unknown>, i: number) => ({
-          output_index: i + 1,
-          structured_fields: (o.structured_fields as Record<string, unknown>) ?? {},
-          competency_tags: (o.competency_tags as string[]) ?? [],
-          narrative_summary: (o.narrative_summary as string) ?? "",
-          coaching_did_well: o.coaching_did_well as string | undefined,
-          coaching_consider: o.coaching_consider as string | undefined,
-          confidence: (o.confidence as Record<string, number>) ?? {},
-        })
-      ),
-      model: response.model,
-    };
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      // Log only length metadata — the matched JSON fragment may contain PHI.
-      console.error(
-        `EXTRACTION_PARSE_ERROR: invalid JSON (fragment length: ${jsonMatch[0].length})`
-      );
-      throw new Error("EXTRACTION_PARSE_ERROR: invalid JSON");
-    }
-    throw e;
-  }
+/**
+ * Stub kept for backward compatibility — actual extraction now runs inside
+ * scrubAndExtractWithGemini(). This function should not be called in
+ * production; it throws to surface accidental legacy call sites.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function extractAssessment(..._args: unknown[]): Promise<ExtractionResult> {
+  throw new Error(
+    "extractAssessment() is deprecated. Use scrubAndExtractWithGemini() from gemini.ts instead."
+  );
 }
