@@ -39,6 +39,43 @@ const VERTEX_REGION = "northamerica-northeast1";
 const GEMINI_MODEL = "gemini-2.5-flash-preview-04-17";
 const GCP_SA_PATH = "/tmp/gcp-sa.json";
 
+// Client-side deadlines. Vertex SDK has no built-in cancel, so we race each
+// generateContent call against a timer. A silent hang must not burn the full
+// Lambda 300s budget (× 3 retries = 15 min of wasted compute).
+const GEMINI_TIMEOUT_MS = 60_000;
+const AUDIO_FETCH_TIMEOUT_MS = 30_000;
+
+/**
+ * Race a Gemini generateContent promise against a timeout. The underlying
+ * request is not truly cancelled (the SDK doesn't expose an AbortSignal), but
+ * the surrounding handler rejects so the pipeline step fails fast instead of
+ * hanging for the full Lambda duration.
+ */
+async function withGeminiTimeout<T>(
+  label: string,
+  promise: Promise<T>
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `GEMINI_TIMEOUT: ${label} exceeded ${GEMINI_TIMEOUT_MS}ms`
+              )
+            ),
+          GEMINI_TIMEOUT_MS
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Client factory (lazy singleton so tests can mock before import)
 // ---------------------------------------------------------------------------
@@ -181,8 +218,16 @@ export async function transcribeWithGemini(
 ): Promise<STTResult> {
   await ensureGcpCredentials();
 
-  // Fetch the audio bytes from the signed URL
-  const audioResponse = await fetch(audioUrl);
+  // Fetch the audio bytes from the signed URL (with 30s deadline).
+  let audioResponse: Response;
+  try {
+    audioResponse = await fetch(audioUrl, {
+      signal: AbortSignal.timeout(AUDIO_FETCH_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`STT_FETCH_ERROR: ${message}`);
+  }
   if (!audioResponse.ok) {
     throw new Error(`STT_FETCH_ERROR: ${audioResponse.status} ${audioResponse.statusText}`);
   }
@@ -239,7 +284,10 @@ Rules:
     ],
   };
 
-  const response = await model.generateContent(request);
+  const response = await withGeminiTimeout(
+    "stt",
+    model.generateContent(request)
+  );
   const candidate = response.response.candidates?.[0];
   const transcript = candidate?.content?.parts?.[0]?.text?.trim() ?? "";
 
@@ -310,7 +358,10 @@ ${afterRegex1}`,
   let llmRedactionCount = 0;
 
   try {
-    const scrubResponse = await model.generateContent(scrubRequest);
+    const scrubResponse = await withGeminiTimeout(
+      "phi_scrub",
+      model.generateContent(scrubRequest)
+    );
     const scrubText =
       scrubResponse.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
 
@@ -408,7 +459,10 @@ ${cleanTranscript}`,
     ],
   };
 
-  const extractResponse = await model.generateContent(extractRequest);
+  const extractResponse = await withGeminiTimeout(
+    "extract",
+    model.generateContent(extractRequest)
+  );
   const extractText =
     extractResponse.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
 

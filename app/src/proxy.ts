@@ -25,11 +25,14 @@ function isPublic(pathname: string): boolean {
   );
 }
 
+// Double-gate: explicit positive match on NODE_ENV === "development" so an
+// unset NODE_ENV fails closed. Keep in sync with auth.ts.
+const devBypassEnabled =
+  process.env.DEV_BYPASS_AUTH === "true" &&
+  process.env.NODE_ENV === "development";
+
 export default async function proxy(request: NextRequest) {
-  if (
-    process.env.DEV_BYPASS_AUTH === "true" &&
-    process.env.NODE_ENV !== "production"
-  ) {
+  if (devBypassEnabled) {
     return NextResponse.next();
   }
 

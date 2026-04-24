@@ -57,7 +57,7 @@ export default function SecurityPage() {
         <DebriefWordmark />
         <a
           href="mailto:dpa@whitecoatprep.com"
-          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-5 text-sm font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none"
+          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-5 text-sm font-medium text-foreground transition-colors hover:bg-border-light"
         >
           Request DPA
         </a>

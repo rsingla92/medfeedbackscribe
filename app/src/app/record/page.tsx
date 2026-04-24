@@ -245,29 +245,41 @@ function ConsentModal({
   const [agreed, setAgreed] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto">
       <div className="w-full max-w-md rounded-[var(--radius-lg)] border border-border bg-surface p-6 space-y-5 shadow-lg">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <h2 className="text-xl font-semibold font-[family-name:var(--font-display)] text-foreground">
             Recording Consent
           </h2>
-          <p className="text-sm text-muted leading-relaxed">
-            {preceptorName} has agreed to have this feedback session
-            recorded. The audio will be transcribed, de-identified, and used to
-            populate your assessment form.
-          </p>
+          <div className="space-y-2 text-sm text-muted leading-relaxed">
+            <p>
+              Debrief records the audio of your feedback conversation with{" "}
+              <span className="font-medium text-foreground">{preceptorName}</span>.
+              The recording is encrypted and stored on Canadian infrastructure
+              (ca-central-1).
+            </p>
+            <p>
+              Patient identifiers are automatically scrubbed before the
+              transcript is saved. Audio is kept for 30 days, then deleted. The
+              de-identified transcript stays until you export or delete it.
+            </p>
+            <p>
+              Only you can see this — not {preceptorName}, not your program.
+              You confirm {preceptorName} has agreed to be recorded.
+            </p>
+          </div>
         </div>
 
-        <label className="flex items-start gap-3 cursor-pointer select-none">
+        <label className="flex items-start gap-3 cursor-pointer select-none rounded-[var(--radius-md)] border border-border bg-background p-3">
           <input
             type="checkbox"
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 h-5 w-5 rounded-[var(--radius-sm)] border-border text-accent accent-[var(--accent)]"
+            className="mt-0.5 h-5 w-5 shrink-0 rounded-[var(--radius-sm)] border-border text-accent accent-[var(--accent)]"
           />
           <span className="text-sm text-foreground leading-snug">
-            I confirm that {preceptorName} has consented to this recording
-            and understands how it will be used.
+            I confirm {preceptorName} has agreed to this recording and I
+            understand how it will be used.
           </span>
         </label>
 

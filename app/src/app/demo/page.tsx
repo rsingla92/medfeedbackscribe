@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ErrorAlert } from "@/app/_components/error-alert";
+import { micError, type ErrorCopy } from "@/lib/errors";
 
 type DemoStep = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "processing" | "review";
 
@@ -175,6 +177,7 @@ export default function DemoPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const [micErr, setMicErr] = useState<ErrorCopy | null>(null);
 
   useEffect(() => {
     if (isRecording) {
@@ -196,6 +199,7 @@ export default function DemoPage() {
   }, [step]);
 
   async function startRecording() {
+    setMicErr(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -212,8 +216,8 @@ export default function DemoPage() {
       mediaRef.current = recorder;
       setIsRecording(true);
       setElapsed(0);
-    } catch {
-      alert("Microphone access denied. Please allow microphone access and try again.");
+    } catch (err) {
+      setMicErr(micError(err));
     }
   }
 
@@ -366,6 +370,20 @@ export default function DemoPage() {
         {/* ─── RECORDING ─── */}
         {step === "recording" && (
           <div className="flex flex-col items-center space-y-6 py-8">
+            {micErr && (
+              <div className="w-full">
+                <ErrorAlert
+                  copy={{
+                    ...micErr,
+                    action: {
+                      label: "Try again",
+                      onClick: () => setMicErr(null),
+                    },
+                  }}
+                  onDismiss={() => setMicErr(null)}
+                />
+              </div>
+            )}
             {!isRecording ? (
               <>
                 <button type="button" onClick={startRecording} aria-label="Start recording"

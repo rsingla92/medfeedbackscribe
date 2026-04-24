@@ -39,6 +39,7 @@ import { runPipeline } from "../pipeline.js";
 import { sendAssessmentNotification } from "../email.js";
 import { transcribeWithGemini, scrubAndExtractWithGemini } from "../gemini.js";
 import {
+  getSession,
   insertAssessments,
   insertPipelineLog,
   updateRecording,
@@ -48,6 +49,7 @@ import {
 const mockSendAssessmentNotification = vi.mocked(sendAssessmentNotification);
 const mockTranscribeWithGemini = vi.mocked(transcribeWithGemini);
 const mockScrubAndExtractWithGemini = vi.mocked(scrubAndExtractWithGemini);
+const mockGetSession = vi.mocked(getSession);
 const mockInsertAssessments = vi.mocked(insertAssessments);
 const mockInsertPipelineLog = vi.mocked(insertPipelineLog);
 const mockUpdateRecording = vi.mocked(updateRecording);
@@ -504,6 +506,63 @@ describe("runPipeline", () => {
       const emailLog = logCalls().find((l) => l.step === "email");
       expect(emailLog).toMatchObject({ step: "email", status: "failed" });
 
+      expect(statusUpdates()).toContain("ready");
+    });
+  });
+
+  describe("SQS retry guard (skip-if-ready)", () => {
+    it("returns early without calling STT when session is already 'ready'", async () => {
+      mockGetSession.mockResolvedValue({
+        id: baseInput.sessionId,
+        user_id: "user-1",
+        preceptor_id: "preceptor-1",
+        rotation_id: null,
+        form_template_id: "ft-1",
+        date: "2026-04-14",
+        status: "ready",
+      });
+
+      await runPipeline(baseInput, baseConfig);
+
+      expect(mockTranscribeWithGemini).not.toHaveBeenCalled();
+      expect(mockScrubAndExtractWithGemini).not.toHaveBeenCalled();
+      expect(mockInsertAssessments).not.toHaveBeenCalled();
+      expect(mockUpdateSessionStatus).not.toHaveBeenCalled();
+    });
+
+    it("returns early without calling STT when session is already 'exported'", async () => {
+      mockGetSession.mockResolvedValue({
+        id: baseInput.sessionId,
+        user_id: "user-1",
+        preceptor_id: "preceptor-1",
+        rotation_id: null,
+        form_template_id: "ft-1",
+        date: "2026-04-14",
+        status: "exported",
+      });
+
+      await runPipeline(baseInput, baseConfig);
+
+      expect(mockTranscribeWithGemini).not.toHaveBeenCalled();
+      expect(mockUpdateSessionStatus).not.toHaveBeenCalled();
+    });
+
+    it("proceeds normally when session status is 'processing' (in-flight retry)", async () => {
+      mockGetSession.mockResolvedValue({
+        id: baseInput.sessionId,
+        user_id: "user-1",
+        preceptor_id: "preceptor-1",
+        rotation_id: null,
+        form_template_id: "ft-1",
+        date: "2026-04-14",
+        status: "processing",
+      });
+      mockTranscribeWithGemini.mockResolvedValue(goodSTTResult);
+      mockScrubAndExtractWithGemini.mockResolvedValue(goodScrubExtractResult);
+
+      await runPipeline(baseInput, baseConfig);
+
+      expect(mockTranscribeWithGemini).toHaveBeenCalled();
       expect(statusUpdates()).toContain("ready");
     });
   });

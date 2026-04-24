@@ -216,7 +216,14 @@ export async function insertAssessments(
     llm_confidence: sql.json(o.confidence as never),
   }));
 
-  await sql`insert into assessments ${sql(rows)}`;
+  // ON CONFLICT DO NOTHING — second line of defense against SQS at-least-once
+  // delivery. The pipeline-level retry guard in runPipeline() should catch this
+  // first, but if for any reason a second invocation slips past it we don't
+  // want to crash the Lambda (which would then mark the session failed).
+  await sql`
+    insert into assessments ${sql(rows)}
+    on conflict (session_id, output_index) do nothing
+  `;
 }
 
 export interface PipelineLogInsert {

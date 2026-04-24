@@ -768,6 +768,87 @@ function ReprocessToast({
   );
 }
 
+// ── Discard-changes confirmation dialog ────────────────────────────────────────
+// Replaces the native window.confirm() used for back-nav on a dirty form.
+// Keyboard-focus is pushed onto the "Keep editing" button (the safer default).
+// Escape closes the dialog (treated as "Keep editing"). Focus is trapped
+// between the two buttons via a tabindex sentinel loop.
+
+function DiscardChangesDialog({
+  onDiscard,
+  onKeepEditing,
+}: {
+  onDiscard: () => void;
+  onKeepEditing: () => void;
+}) {
+  const keepRef = useRef<HTMLButtonElement>(null);
+  const discardRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    // Focus the safer option when the dialog opens.
+    keepRef.current?.focus();
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onKeepEditing();
+        return;
+      }
+      // Trap Tab between the two buttons so keyboard users can't escape the
+      // dialog.
+      if (e.key === "Tab") {
+        const active = document.activeElement;
+        if (e.shiftKey && active === keepRef.current) {
+          e.preventDefault();
+          discardRef.current?.focus();
+        } else if (!e.shiftKey && active === discardRef.current) {
+          e.preventDefault();
+          keepRef.current?.focus();
+        }
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onKeepEditing]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="discard-title"
+      aria-describedby="discard-desc"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+    >
+      <div className="w-full max-w-sm rounded-[var(--radius-lg)] border border-border bg-surface p-6 space-y-4 shadow-lg">
+        <h2 id="discard-title" className="text-lg font-semibold text-foreground">
+          Discard unsaved changes?
+        </h2>
+        <p id="discard-desc" className="text-sm text-muted">
+          You have edits that haven&apos;t been saved. Leaving will lose them.
+        </p>
+        <div className="flex gap-3 pt-1">
+          <button
+            ref={keepRef}
+            type="button"
+            onClick={onKeepEditing}
+            className="flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-border-light"
+          >
+            Keep editing
+          </button>
+          <button
+            ref={discardRef}
+            type="button"
+            onClick={onDiscard}
+            className="flex-1 rounded-[var(--radius-md)] bg-error px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+          >
+            Discard changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Review Client Component ───────────────────────────────────────────────
 
 export default function ReviewClient({ session }: { session: SessionData }) {
@@ -788,6 +869,8 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [reprocessing, setReprocessing] = useState(false);
   const [reprocessError, setReprocessError] = useState<ErrorCopy | null>(null);
   const [reprocessToast, setReprocessToast] = useState<string | null>(null);
+  // Discard-changes dialog (replaces the old window.confirm on back-nav)
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   // Track when polling started to detect stuck-processing state
   const processingStartRef = useRef<number>(
     session.status === "processing" ? Date.now() : 0
@@ -1045,13 +1128,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
             type="button"
             onClick={() => {
               if (hasUnsavedChanges) {
-                if (
-                  window.confirm(
-                    "You have unsaved changes. Are you sure you want to leave?"
-                  )
-                ) {
-                  router.push("/");
-                }
+                setShowDiscardDialog(true);
               } else {
                 router.push("/");
               }
@@ -1295,6 +1372,17 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       {/* Audio Player Bar */}
       {audioUrl && (
         <AudioPlayerBar audioUrl={audioUrl} />
+      )}
+
+      {/* Discard-changes dialog — replaces native window.confirm on back-nav */}
+      {showDiscardDialog && (
+        <DiscardChangesDialog
+          onKeepEditing={() => setShowDiscardDialog(false)}
+          onDiscard={() => {
+            setShowDiscardDialog(false);
+            router.push("/");
+          }}
+        />
       )}
     </main>
   );

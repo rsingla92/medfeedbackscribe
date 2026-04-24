@@ -31,6 +31,8 @@ export interface Profile {
   specialty: string | null;
   year_of_training: number | null;
   site: string | null;
+  /** Unverified email awaiting confirmation (see migration 008). */
+  pending_email?: string | null;
 }
 
 export interface Preceptor {
@@ -39,6 +41,12 @@ export interface Preceptor {
   email: string | null;
   specialty: string | null;
   site: string | null;
+  /**
+   * Ownership marker. Null means the row is shared/institutional (seeded) and
+   * cannot be mutated by residents. Non-null means that user created the row
+   * and is the only non-admin principal allowed to update/delete it.
+   */
+  created_by_user_id: string | null;
 }
 
 export interface Rotation {
@@ -116,7 +124,8 @@ export interface PipelineLog {
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const rows = await sql<Profile[]>`
-    select id, full_name, email, program, specialty, year_of_training, site
+    select id, full_name, email, program, specialty, year_of_training, site,
+           pending_email
     from profiles
     where id = ${userId}
     limit 1
@@ -124,9 +133,18 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return rows[0] ?? null;
 }
 
+/**
+ * Upsert a profile.
+ *
+ * SECURITY: the caller MUST gate `patch.email` before passing it in. The
+ * onboarding route only includes `email` when it matches the authenticated
+ * `users.email`; divergent addresses go through the pending-email flow
+ * (upsertProfilePendingEmail + confirmProfileEmailByToken). If `patch.email`
+ * is undefined/null, this query preserves the existing stored email.
+ */
 export async function upsertProfile(
   userId: string,
-  patch: Partial<Omit<Profile, "id">>,
+  patch: Partial<Omit<Profile, "id" | "pending_email">>,
 ): Promise<Profile> {
   const rows = await sql<Profile[]>`
     insert into profiles (id, full_name, email, program, specialty, year_of_training, site)
@@ -147,16 +165,77 @@ export async function upsertProfile(
       year_of_training = coalesce(excluded.year_of_training, profiles.year_of_training),
       site = coalesce(excluded.site, profiles.site),
       updated_at = now()
-    returning id, full_name, email, program, specialty, year_of_training, site
+    returning id, full_name, email, program, specialty, year_of_training, site,
+              pending_email
   `;
   return rows[0];
 }
 
-// ── Preceptors (shared — TODO(F-12) may need tightening) ────────────────────
+/**
+ * Stage a pending email change. Caller generates the token and expiry; this
+ * helper just persists them. Subsequent `confirmProfileEmailByToken` redeems
+ * the token and promotes pending_email → email.
+ *
+ * If the profile row doesn't exist yet (first-time onboarding with a
+ * divergent email), create a minimal one — `full_name` is NOT NULL, so we
+ * stash a placeholder that the onboarding route's subsequent `upsertProfile`
+ * call overwrites in the same request.
+ */
+export async function upsertProfilePendingEmail(
+  userId: string,
+  pendingEmail: string,
+  token: string,
+  expiresAt: Date,
+): Promise<void> {
+  await sql`
+    insert into profiles
+      (id, full_name, pending_email, pending_email_token, pending_email_expires_at)
+    values (${userId}, ${""}, ${pendingEmail}, ${token}, ${expiresAt})
+    on conflict (id) do update set
+      pending_email = excluded.pending_email,
+      pending_email_token = excluded.pending_email_token,
+      pending_email_expires_at = excluded.pending_email_expires_at,
+      updated_at = now()
+  `;
+}
+
+/**
+ * Redeem a pending-email token. Returns the user id on success (and promotes
+ * pending_email → email, clearing the pending fields). Returns null if the
+ * token is unknown, expired, or already used.
+ */
+export async function confirmProfileEmailByToken(
+  token: string,
+): Promise<string | null> {
+  const rows = await sql<{ id: string }[]>`
+    update profiles set
+      email = pending_email,
+      pending_email = null,
+      pending_email_token = null,
+      pending_email_expires_at = null,
+      updated_at = now()
+    where pending_email_token = ${token}
+      and pending_email is not null
+      and pending_email_expires_at is not null
+      and pending_email_expires_at > now()
+    returning id
+  `;
+  return rows[0]?.id ?? null;
+}
+
+// ── Preceptors (per-user ownership; see migration 007) ──────────────────────
+//
+// Ownership model:
+//   - `created_by_user_id` = NULL → shared / institutional row (seed data);
+//     residents can read but not mutate.
+//   - `created_by_user_id` = X    → only user X can update or delete.
+// This is enforced in the UPDATE/DELETE WHERE clauses below, not at the route
+// layer alone — defense in depth. The routes still return 403 on zero rows
+// affected so the failure surfaces explicitly.
 
 export async function listPreceptors(): Promise<Preceptor[]> {
   return sql<Preceptor[]>`
-    select id, name, email, specialty, site
+    select id, name, email, specialty, site, created_by_user_id
     from preceptors
     order by name
   `;
@@ -164,41 +243,75 @@ export async function listPreceptors(): Promise<Preceptor[]> {
 
 export async function getPreceptor(id: string): Promise<Preceptor | null> {
   const rows = await sql<Preceptor[]>`
-    select id, name, email, specialty, site
+    select id, name, email, specialty, site, created_by_user_id
     from preceptors where id = ${id} limit 1
   `;
   return rows[0] ?? null;
 }
 
 export async function createPreceptor(
-  patch: Omit<Preceptor, "id">,
+  patch: Omit<Preceptor, "id" | "created_by_user_id">,
+  userId: string,
 ): Promise<Preceptor> {
   const rows = await sql<Preceptor[]>`
-    insert into preceptors (name, email, specialty, site)
-    values (${patch.name}, ${patch.email ?? null}, ${patch.specialty ?? null}, ${patch.site ?? null})
-    returning id, name, email, specialty, site
+    insert into preceptors (name, email, specialty, site, created_by_user_id)
+    values (
+      ${patch.name},
+      ${patch.email ?? null},
+      ${patch.specialty ?? null},
+      ${patch.site ?? null},
+      ${userId}
+    )
+    returning id, name, email, specialty, site, created_by_user_id
   `;
   return rows[0];
 }
 
+/**
+ * Update a preceptor row.
+ *
+ * Returns null when the row doesn't exist OR the caller doesn't own it.
+ * Callers should surface a 403 in the "not owned" case rather than 404 so
+ * the ownership boundary is visible (an attacker probing preceptor ids
+ * would otherwise get a 404 either way).
+ *
+ * `coalesce($_ ?? null, column)` preserves the existing value when the
+ * patch omits the field — preventing the silent-blank bug where a PATCH
+ * body with `{ name: "New" }` would wipe email/specialty/site to NULL.
+ */
 export async function updatePreceptor(
   id: string,
-  patch: Partial<Omit<Preceptor, "id">>,
+  userId: string,
+  patch: Partial<Omit<Preceptor, "id" | "created_by_user_id">>,
 ): Promise<Preceptor | null> {
   const rows = await sql<Preceptor[]>`
     update preceptors set
       name = coalesce(${patch.name ?? null}, name),
-      email = ${patch.email ?? null},
-      specialty = ${patch.specialty ?? null},
-      site = ${patch.site ?? null}
+      email = coalesce(${patch.email ?? null}, email),
+      specialty = coalesce(${patch.specialty ?? null}, specialty),
+      site = coalesce(${patch.site ?? null}, site)
     where id = ${id}
-    returning id, name, email, specialty, site
+      and created_by_user_id = ${userId}
+    returning id, name, email, specialty, site, created_by_user_id
   `;
   return rows[0] ?? null;
 }
 
-export async function deletePreceptor(id: string): Promise<void> {
-  await sql`delete from preceptors where id = ${id}`;
+/**
+ * Delete a preceptor row owned by `userId`. Returns the number of rows
+ * deleted (0 when the row is missing, owned by someone else, or shared).
+ * Callers should surface 0 as 403.
+ */
+export async function deletePreceptor(
+  id: string,
+  userId: string,
+): Promise<number> {
+  const result = await sql`
+    delete from preceptors
+    where id = ${id}
+      and created_by_user_id = ${userId}
+  `;
+  return result.count ?? 0;
 }
 
 // ── Rotations ────────────────────────────────────────────────────────────────

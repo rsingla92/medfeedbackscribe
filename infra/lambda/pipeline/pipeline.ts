@@ -17,6 +17,7 @@
  */
 
 import {
+  getSession,
   insertAssessments,
   insertPipelineLog,
   updateRecording,
@@ -67,6 +68,23 @@ export async function runPipeline(
 ): Promise<void> {
   const pipelineStart = Date.now();
   const projectId = config.gcpProjectId ?? process.env.GCP_PROJECT_ID ?? "";
+
+  // ── SQS at-least-once retry guard ────────────────────────────────────────
+  // If a prior invocation already completed this session, skip. Otherwise we
+  // would flip status back to 'processing', re-run the whole pipeline, and
+  // then hit UNIQUE(session_id, output_index) on the assessments insert.
+  const existing = await getSession(input.sessionId);
+  if (existing && (existing.status === "ready" || existing.status === "exported")) {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg: "skipping already-complete session",
+        sessionId: input.sessionId,
+        status: existing.status,
+      })
+    );
+    return;
+  }
 
   await updateSessionStatus(input.sessionId, "processing");
 

@@ -1,110 +1,77 @@
-# RLS Policy Integration Tests
+# Integration tests — PHIPA queryset filtering
 
-Integration tests that verify Supabase Row Level Security (RLS) policies are correctly enforced for all tables in the Debrief schema.
+These tests verify that **every user-scoped query helper in
+`app/src/lib/db/queries.ts` refuses to return another user's data**. They
+replace the old Supabase RLS harness — RLS is now enforced in the application
+tier, so these integration tests are the only thing standing between a
+refactor and a cross-user PHI leak.
 
-## What is tested
+## What's covered
 
-Every policy across all RLS-enabled tables:
+One test per helper in `queries.ts`:
 
-| Table | Policies tested |
-|-------|----------------|
-| `sessions` | Users see/create/update own rows; cannot read/update/delete other users' rows |
-| `recordings` | Users see/create/update own rows (via session ownership); cross-user isolation |
-| `assessments` | Users see/create/update own rows (via session ownership); cross-user isolation |
-| `pipeline_logs` | Users see/create own logs (via session ownership); cross-user isolation |
-| `preceptors` | Authenticated users have full CRUD (shared resource); anon blocked |
-| `profiles` | Users see/insert/update own profile only; cannot impersonate others |
-| Anonymous | Zero access to all tables |
-| Service role | Full access to all tables (harness sanity check) |
+| Helper | Assertion |
+|--------|-----------|
+| `getRecordingSession` | null for non-owner, row for owner |
+| `listRecordingSessions` | only caller's rows |
+| `getRecordingSessionWithJoins` | null for non-owner |
+| `createRecordingSession` | fresh row carries supplied user_id |
+| `updateRecordingSessionStatus` | no-op for non-owner |
+| `getRecordingBySession` | null for non-owner |
+| `createRecording` | throws when session is another user's |
+| `clearTranscriptClean` | no-op for non-owner |
+| `listAssessmentsForSession` | empty for non-owner |
+| `updateAssessment` | null for non-owner |
+| `markAssessmentsExported` | no-op for non-owner |
+| `listPipelineLogs` | empty for non-owner |
+| `getProfile` | returns only caller's profile |
+| `upsertProfile` | can't impersonate another user's row |
+| `getSessionMetrics` | counts only caller's sessions |
+| `listPreceptors` / `getPreceptor` / `listRotations` / `listFormTemplates` / `getFormTemplate` | positive baseline (shared data) |
 
-## Prerequisites
+## Prereqs
 
-### 1. Install Supabase CLI
+1. Local Postgres running (`postgresql://rsingla@localhost:5432/debrief` by
+   default — whatever is in `app/.env.local`).
+2. Migrations applied: `bun run migrate`.
 
-```bash
-brew install supabase/tap/supabase
-```
-
-### 2. Start the local Supabase stack
-
-From the `app/` directory:
-
-```bash
-cd app
-supabase start
-```
-
-This starts a local Postgres instance with GoTrue auth at `http://127.0.0.1:54321`.
-The first run downloads Docker images; subsequent starts are fast.
-
-### 3. Apply migrations
-
-Migrations are applied automatically on `supabase start`. If you need to re-apply:
-
-```bash
-supabase db reset
-```
-
-### 4. Get the local keys
-
-```bash
-supabase status
-```
-
-Example output:
-```
-API URL: http://127.0.0.1:54321
-anon key: eyJhbGciOi...
-service_role key: eyJhbGciOi...
-```
-
-### 5. Set environment variables
-
-```bash
-export SUPABASE_TEST_URL=http://127.0.0.1:54321
-export SUPABASE_TEST_ANON_KEY=<anon key from supabase status>
-export SUPABASE_TEST_SERVICE_KEY=<service_role key from supabase status>
-```
-
-Or add them to a `.env.test.local` file (not committed):
-
-```env
-SUPABASE_TEST_URL=http://127.0.0.1:54321
-SUPABASE_TEST_ANON_KEY=eyJhbGciOi...
-SUPABASE_TEST_SERVICE_KEY=eyJhbGciOi...
-```
-
-## Running the tests
+## Running
 
 ```bash
 cd app
-
-# Run all tests (unit + integration if env set)
-bun run test
-
-# Run only integration tests
-bun run test tests/integration/rls.test.ts
-
-# Run with env vars inline
-SUPABASE_TEST_URL=http://127.0.0.1:54321 \
-SUPABASE_TEST_ANON_KEY=<anon> \
-SUPABASE_TEST_SERVICE_KEY=<service> \
-bun run test tests/integration/rls.test.ts
+bun run test:integration
 ```
 
-## Skip behavior
-
-When `SUPABASE_TEST_URL`, `SUPABASE_TEST_ANON_KEY`, and `SUPABASE_TEST_SERVICE_KEY` are **not** set, all integration test suites call `describe.skip(...)` and the test run exits cleanly. Existing unit tests are unaffected.
-
-## Stopping the local stack
+Unit tests stay fast and DB-free:
 
 ```bash
-supabase stop
+bun run test   # excludes tests/integration/**
 ```
 
-## Notes
+## How it stays safe
 
-- Tests create isolated users (user A, user B) and seed rows at test start, then clean up in `afterAll`.
-- Each user's JWT is obtained by signing in with the seeded credentials — the same flow a real client uses.
-- The service-role client is used only for seeding/cleanup and the sanity-check describe block.
-- No production or staging data is touched; all operations target the local Docker stack.
+- Every inserted row is tagged with a shared **UUIDv4 prefix** (`TEST_PREFIX`)
+  baked into `users.email`, `preceptors.name`, `form_templates.name`,
+  `profiles.full_name`, etc.
+- `cleanupTestData()` in `afterAll` deletes rows matching that prefix, in
+  FK-safe order. The dev-seeded user (`dev@example.com`) and its demo
+  session are never touched.
+- After cleanup, the test asserts the non-test `recording_sessions` count is
+  unchanged from the snapshot taken in `beforeAll`.
+
+## Manual verification
+
+```bash
+psql debrief -c "select count(*) from recording_sessions \
+  where user_id not in (select id from users where email like 'dev%');"
+```
+
+Should be zero (or whatever demo count you started with) after running the
+suite.
+
+## Files
+
+- `queryset-filtering.test.ts` — the test suite.
+- `helpers.ts` — seed/cleanup utilities, `.env.local` loader, connection
+  verification, schema-feature detection (e.g. optional
+  `preceptors.created_by_user_id` from migration 007).

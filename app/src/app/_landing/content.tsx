@@ -517,13 +517,13 @@ export function LandingContent() {
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/auth"
-            className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:px-5"
+            className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
           >
             Sign in
           </Link>
           <Link
             href="/demo"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:px-5"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover sm:px-5"
           >
             Try it free
           </Link>
@@ -558,14 +558,14 @@ export function LandingContent() {
               <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 <Link
                   href="/demo"
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
                 >
                   <MicIcon />
                   Try it, no sign-up
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
+                  className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light sm:w-auto"
                 >
                   See how it works
                   <ArrowDownIcon />
@@ -742,14 +742,14 @@ export function LandingContent() {
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link
                 href="/demo"
-                className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none"
+                className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
               >
                 <MicIcon />
                 Try it, no sign-up
               </Link>
               <Link
                 href="/auth"
-                className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-10 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none"
+                className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-10 text-base font-medium text-foreground transition-colors hover:bg-border-light"
               >
                 Sign in
               </Link>

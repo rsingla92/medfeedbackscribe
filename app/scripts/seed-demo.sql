@@ -15,6 +15,10 @@ delete from recording_sessions;
 -- Clear everyone out (safe now that no session references anything).
 delete from preceptors;
 
+-- Seeded rows intentionally leave `created_by_user_id` NULL so the app tier
+-- treats them as shared/institutional — readable by all residents but not
+-- mutable by any (see migration 007 and updatePreceptor/deletePreceptor in
+-- queries.ts, which require a matching created_by_user_id in the WHERE).
 insert into preceptors (name, email, specialty, site) values
   -- Grey's Anatomy
   ('Dr. Meredith Grey',      'mgrey@gsm-demo.ca',     'General Surgery',        'Grey Sloan Memorial'),

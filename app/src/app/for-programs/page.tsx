@@ -84,7 +84,7 @@ export default function ForProgramsPage() {
         <DebriefWordmark />
         <a
           href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
-          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none"
+          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
         >
           Request a pilot
         </a>
@@ -116,13 +116,13 @@ export default function ForProgramsPage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
               href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
-              className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
+              className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
             >
               Request a pilot
             </a>
             <Link
               href="/contact"
-              className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
+              className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light sm:w-auto"
             >
               Talk to us first
             </Link>
@@ -255,13 +255,13 @@ export default function ForProgramsPage() {
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <a
                 href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
-                className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:w-auto"
+                className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
               >
                 pilot@whitecoatprep.com
               </a>
               <Link
                 href="/security"
-                className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:w-auto"
+                className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-8 text-base font-medium text-foreground transition-colors hover:bg-border-light sm:w-auto"
               >
                 Security and compliance
               </Link>

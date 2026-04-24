@@ -21,6 +21,19 @@ export async function sendMagicLinkEmail({
   identifier,
   url,
 }: SendVerificationRequestParams): Promise<void> {
+  // Belt-and-suspenders host allowlist: even if trustHost ever leaks or
+  // AUTH_URL matching has a gap, refuse to dispatch a magic-link email whose
+  // origin doesn't match the pinned AUTH_URL. Do NOT include the mismatched
+  // host in the error message — it can end up in logs / error reporters.
+  const expected = process.env.AUTH_URL;
+  if (expected) {
+    const linkOrigin = new URL(url).origin;
+    const expectedOrigin = new URL(expected).origin;
+    if (linkOrigin !== expectedOrigin) {
+      throw new Error("Refusing to send magic link for unexpected host");
+    }
+  }
+
   const { host } = new URL(url);
   const subject = `Your Debrief sign-in link`;
 

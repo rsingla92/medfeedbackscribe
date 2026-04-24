@@ -66,7 +66,7 @@ export default function AccessibilityPage() {
         <DebriefWordmark />
         <Link
           href="/demo"
-          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none"
+          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
         >
           Try it free
         </Link>

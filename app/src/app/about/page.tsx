@@ -38,13 +38,13 @@ export default function AboutPage() {
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/auth"
-            className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light focus-visible:outline-none sm:px-5"
+            className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
           >
             Sign in
           </Link>
           <Link
             href="/demo"
-            className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none sm:px-5"
+            className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover sm:px-5"
           >
             Try it free
           </Link>
@@ -234,7 +234,7 @@ export default function AboutPage() {
             </p>
             <a
               href="mailto:hello@whitecoatprep.com"
-              className="mt-8 inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none"
+              className="mt-8 inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               hello@whitecoatprep.com
             </a>

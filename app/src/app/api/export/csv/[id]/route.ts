@@ -6,9 +6,8 @@ import {
   listAssessmentsForSession,
   getFormTemplate,
   getProfile,
-  markAssessmentsExported,
-  updateRecordingSessionStatus,
 } from "@/lib/db/queries";
+import { sql } from "@/lib/db/client";
 
 // ── CSV Helpers ─────────────────────────────────────────────────────────────────
 
@@ -172,15 +171,30 @@ export async function POST(
       ? `${effectiveName}-${safePreceptor}-${dateStr}.csv`
       : `${effectiveName}-${dateStr}.csv`;
 
-    await markAssessmentsExported(sessionId, userId);
-    const updated = await updateRecordingSessionStatus(
-      sessionId,
-      userId,
-      "exported",
-    );
+    // Atomically mark assessments exported + flip session status. If either
+    // statement fails, the transaction rolls back so we never leave the DB in
+    // a split state where assessments.exported_at is set but the session is
+    // still `ready`.
+    const updated = await sql.begin(async (tx) => {
+      await tx`
+        update assessments a
+        set exported_at = now()
+        from recording_sessions rs
+        where a.session_id = rs.id
+          and a.session_id = ${sessionId}
+          and rs.user_id = ${userId}
+      `;
+      const rows = await tx<{ id: string }[]>`
+        update recording_sessions
+        set status = 'exported'
+        where id = ${sessionId} and user_id = ${userId}
+        returning id
+      `;
+      return rows[0] ?? null;
+    });
     if (!updated) {
       console.error(
-        `Partial export state: assessments marked exported but session ${sessionId} status update failed`,
+        `Export state update failed: session ${sessionId} not found for user ${userId}`,
       );
       throw new Error("Failed to update session status");
     }
