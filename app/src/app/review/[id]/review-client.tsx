@@ -9,6 +9,13 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { SessionData, Assessment } from "./page";
+import { ErrorAlert } from "@/app/_components/error-alert";
+import {
+  saveError as saveErrorCopy,
+  exportError as exportErrorCopy,
+  reprocessError as reprocessErrorCopy,
+  type ErrorCopy,
+} from "@/lib/errors";
 
 // ── Processing State ───────────────────────────────────────────────────────────
 
@@ -27,7 +34,7 @@ function ProcessingView({
   stuck: boolean;
   transcriptPreview: string | null;
   reprocessing: boolean;
-  reprocessError: string | null;
+  reprocessError: ErrorCopy | null;
 }) {
   const steps = [
     { key: "stt", label: "Transcribing audio" },
@@ -85,7 +92,9 @@ function ProcessingView({
           </p>
         </div>
         {reprocessError && (
-          <p className="text-sm text-error text-center max-w-xs">{reprocessError}</p>
+          <div className="w-full max-w-md">
+            <ErrorAlert copy={reprocessError} />
+          </div>
         )}
         <button
           type="button"
@@ -696,17 +705,17 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   const [assessments, setAssessments] = useState(session.assessments);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<ErrorCopy | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(session.status);
   const [pollingStep, setPollingStep] = useState(session.pipeline_step ?? null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState<"pdf" | "csv" | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<ErrorCopy | null>(null);
   const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
-  const [reprocessError, setReprocessError] = useState<string | null>(null);
+  const [reprocessError, setReprocessError] = useState<ErrorCopy | null>(null);
   const [reprocessToast, setReprocessToast] = useState<string | null>(null);
   // Track when polling started to detect stuck-processing state
   const processingStartRef = useRef<number>(
@@ -817,7 +826,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       return true;
     } catch (err) {
       console.error("Failed to save assessments:", err);
-      setSaveError("Failed to save changes. Please try again.");
+      setSaveError(saveErrorCopy("your edits"));
       return false;
     } finally {
       setSaving(false);
@@ -858,7 +867,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       setExportSuccess("pdf");
     } catch (err) {
       console.error("Export failed:", err);
-      setExportError(err instanceof Error ? err.message : "PDF export failed. Please try again.");
+      setExportError(exportErrorCopy("PDF"));
     } finally {
       setExporting(false);
     }
@@ -897,7 +906,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
       setExportSuccess("csv");
     } catch (err) {
       console.error("CSV export failed:", err);
-      setExportError(err instanceof Error ? err.message : "CSV export failed. Please try again.");
+      setExportError(exportErrorCopy("CSV"));
     } finally {
       setExportingCsv(false);
     }
@@ -924,13 +933,18 @@ export default function ReviewClient({ session }: { session: SessionData }) {
         setPollingStep(null);
         processingStartRef.current = Date.now();
       } else {
-        const body = await res.json().catch(() => ({ error: "Unknown error" }));
-        setReprocessError(
-          body.error ?? "Could not start reprocessing. Please try again."
-        );
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setReprocessError(reprocessErrorCopy(body.error));
       }
     } catch {
-      setReprocessError("Network error. Please check your connection and try again.");
+      setReprocessError({
+        title: "Network error",
+        description:
+          "We couldn't reach the server. Check your connection and try again.",
+        action: { label: "Try again" },
+      });
     } finally {
       setReprocessing(false);
     }
@@ -1027,22 +1041,10 @@ export default function ReviewClient({ session }: { session: SessionData }) {
         </div>
       )}
 
-      {/* Save error banner — sits below the unsaved-changes banner when both are visible */}
+      {/* Save error — richer card below the unsaved-changes banner */}
       {saveError && (
-        <div
-          className={`sticky z-20 border-b border-error bg-error-bg px-4 py-2 ${hasUnsavedChanges ? "top-[93px]" : "top-[61px]"}`}
-        >
-          <div className="mx-auto max-w-2xl flex items-center justify-between">
-            <span className="text-xs font-medium text-error">{saveError}</span>
-            <button
-              type="button"
-              onClick={() => setSaveError(null)}
-              className="text-xs font-semibold text-error hover:opacity-70 transition-opacity"
-              aria-label="Dismiss error"
-            >
-              Dismiss
-            </button>
-          </div>
+        <div className="mx-auto max-w-2xl px-4 pt-3">
+          <ErrorAlert copy={saveError} onDismiss={() => setSaveError(null)} />
         </div>
       )}
 
@@ -1152,10 +1154,10 @@ export default function ReviewClient({ session }: { session: SessionData }) {
 
             {/* Export error */}
             {exportError && (
-              <div className="rounded-[var(--radius-md)] bg-error-bg p-3 flex items-center justify-between">
-                <p className="text-sm text-error">{exportError}</p>
-                <button type="button" onClick={() => setExportError(null)} className="text-xs text-error font-medium underline">Dismiss</button>
-              </div>
+              <ErrorAlert
+                copy={exportError}
+                onDismiss={() => setExportError(null)}
+              />
             )}
 
             {/* Action buttons */}

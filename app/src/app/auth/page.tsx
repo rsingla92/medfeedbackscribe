@@ -2,20 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
+import { ErrorAlert } from "@/app/_components/error-alert";
+import { authError, type ErrorCopy } from "@/lib/errors";
 
 type AuthState = "idle" | "sending" | "sent" | "error";
 
 export default function AuthPage() {
   const [state, setState] = useState<AuthState>("idle");
   const [sentEmail, setSentEmail] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorCopy, setErrorCopy] = useState<ErrorCopy | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
     if (err) {
       setState("error");
-      setErrorMessage(errorLabel(err));
+      setErrorCopy(authError(err));
     }
   }, []);
 
@@ -29,7 +31,7 @@ export default function AuthPage() {
 
     setState("sending");
     setSentEmail(email);
-    setErrorMessage("");
+    setErrorCopy(null);
 
     const callbackUrl =
       new URLSearchParams(window.location.search).get("callbackUrl") ?? "/";
@@ -37,7 +39,10 @@ export default function AuthPage() {
 
     if (res?.error) {
       setState("error");
-      setErrorMessage(errorLabel(res.error));
+      setErrorCopy({
+        ...authError(res.error),
+        action: { label: "Try again", onClick: () => setState("idle") },
+      });
     } else {
       setState("sent");
     }
@@ -96,20 +101,16 @@ export default function AuthPage() {
           </div>
         )}
 
-        {state === "error" && (
-          <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
-            <h2 className="text-lg font-semibold text-foreground">
-              Something went wrong
-            </h2>
-            <p className="text-sm text-muted">{errorMessage}</p>
-            <button
-              type="button"
-              onClick={() => setState("idle")}
-              className="text-sm font-medium text-accent"
-            >
-              Try again
-            </button>
-          </div>
+        {state === "error" && errorCopy && (
+          <ErrorAlert
+            copy={{
+              ...errorCopy,
+              action: errorCopy.action ?? {
+                label: "Try again",
+                onClick: () => setState("idle"),
+              },
+            }}
+          />
         )}
 
         {(state === "idle" || state === "sending") && (
@@ -205,17 +206,3 @@ export default function AuthPage() {
   );
 }
 
-function errorLabel(code: string): string {
-  switch (code) {
-    case "AccessDenied":
-      return "Access denied. Please contact your program administrator.";
-    case "Verification":
-      return "The sign-in link was invalid or has expired. Request a new one below.";
-    case "OAuthAccountNotLinked":
-      return "This email is already linked to a different sign-in method.";
-    case "EmailSignin":
-      return "We couldn't send the sign-in email. Please try again.";
-    default:
-      return "Something went wrong. Please try again.";
-  }
-}

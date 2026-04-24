@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { ErrorAlert } from "@/app/_components/error-alert";
+import { loadError, saveError, type ErrorCopy } from "@/lib/errors";
 
 interface Preceptor {
   id: string;
@@ -16,7 +18,7 @@ export default function PreceptorsPage() {
 
   const [preceptors, setPreceptors] = useState<Preceptor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorCopy | null>(null);
 
   // Add/Edit form state
   const [showForm, setShowForm] = useState(false);
@@ -38,8 +40,8 @@ export default function PreceptorsPage() {
       if (!res.ok) throw new Error(`Failed (${res.status})`);
       const body = (await res.json()) as { preceptors: Preceptor[] };
       setPreceptors(body.preceptors);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load preceptors");
+    } catch {
+      setError(loadError("preceptors"));
     } finally {
       setLoading(false);
     }
@@ -93,15 +95,12 @@ export default function PreceptorsPage() {
             body: JSON.stringify(payload),
           });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        setError(body?.error ?? `Failed (${res.status})`);
+        setError(saveError("this preceptor"));
         setSaving(false);
         return;
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save preceptor");
+    } catch {
+      setError(saveError("this preceptor"));
       setSaving(false);
       return;
     }
@@ -115,8 +114,13 @@ export default function PreceptorsPage() {
     try {
       const res = await fetch(`/api/preceptors/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`Failed (${res.status})`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete preceptor");
+    } catch {
+      setError({
+        title: "Couldn't delete this preceptor",
+        description:
+          "This might be because sessions reference them. Sessions with this preceptor are preserved — contact support if you want a full removal.",
+        action: { label: "Try again" },
+      });
     }
     setDeletingId(null);
     fetchPreceptors();
@@ -155,9 +159,8 @@ export default function PreceptorsPage() {
 
       <div className="flex-1 px-4 py-6 mx-auto w-full max-w-lg">
         {error && (
-          <div className="mb-4 rounded-[var(--radius-md)] border border-border bg-error-bg p-3 text-sm text-error">
-            {error}
-            <button type="button" onClick={() => setError(null)} className="ml-2 font-medium underline">Dismiss</button>
+          <div className="mb-4">
+            <ErrorAlert copy={error} onDismiss={() => setError(null)} />
           </div>
         )}
 

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ErrorAlert } from "@/app/_components/error-alert";
+import { saveError, type ErrorCopy } from "@/lib/errors";
 
 const PROGRAMS = [
   "UBC Family Medicine",
@@ -34,7 +36,7 @@ export default function OnboardingPage() {
   const [yearOfTraining, setYearOfTraining] = useState("");
   const [site, setSite] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorCopy | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,10 +58,7 @@ export default function OnboardingPage() {
     });
 
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      setError(body?.error ?? "Failed to save profile");
+      setError(saveError("your profile"));
       setSaving(false);
       return;
     }
@@ -81,9 +80,7 @@ export default function OnboardingPage() {
         </div>
 
         {error && (
-          <div className="rounded-[var(--radius-md)] border border-border bg-error-bg p-3 text-sm text-error">
-            {error}
-          </div>
+          <ErrorAlert copy={error} onDismiss={() => setError(null)} />
         )}
 
         <div className="space-y-4 rounded-xl border border-border bg-surface p-6">

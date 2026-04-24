@@ -2,6 +2,13 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { ErrorAlert } from "@/app/_components/error-alert";
+import {
+  micError as micErrorCopy,
+  uploadError as uploadErrorCopy,
+  loadError,
+  type ErrorCopy,
+} from "@/lib/errors";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -225,14 +232,14 @@ export default function RecordPage() {
   const [selectedRotation, setSelectedRotation] = useState("");
   const [selectedFormTemplate, setSelectedFormTemplate] = useState("");
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<ErrorCopy | null>(null);
 
   // Flow state
   const [step, setStep] = useState<Step>("pick-rotation");
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [micError, setMicError] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [micError, setMicError] = useState<ErrorCopy | null>(null);
+  const [uploadError, setUploadError] = useState<ErrorCopy | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [offlineBlob, setOfflineBlob] = useState<Blob | null>(null);
   const [submittedSessionId, setSubmittedSessionId] = useState<string | null>(null);
@@ -284,10 +291,8 @@ export default function RecordPage() {
         setPreceptors(preceptorBody.preceptors);
         setRotations(rotationBody.rotations);
         setFormTemplates(formBody.templates);
-      } catch (err) {
-        setFetchError(
-          err instanceof Error ? err.message : "Failed to load setup data",
-        );
+      } catch {
+        setFetchError(loadError("preceptors, rotations, and forms"));
       } finally {
         setLoading(false);
       }
@@ -396,13 +401,7 @@ export default function RecordPage() {
       setIsPaused(false);
       setStep("recording");
     } catch (err) {
-      const message =
-        err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Microphone access denied. Please allow microphone access in your browser settings and try again."
-          : err instanceof DOMException && err.name === "NotFoundError"
-            ? "No microphone found. Please connect a microphone and try again."
-            : "Could not start recording. Please check your microphone.";
-      setMicError(message);
+      setMicError(micErrorCopy(err));
     }
   }, []);
 
@@ -526,9 +525,7 @@ export default function RecordPage() {
       setSubmittedSessionId(sessionId);
       setStep("submitted");
     } catch (err) {
-      setUploadError(
-        err instanceof Error ? err.message : "Upload failed. Please try again."
-      );
+      setUploadError(uploadErrorCopy(err));
       setStep("pick-rotation");
     }
   }, [selectedPreceptor, selectedRotation, selectedFormTemplate, router]);
@@ -587,12 +584,15 @@ export default function RecordPage() {
                   ))}
                 </div>
               ) : fetchError ? (
-                <div className="rounded-xl border border-border bg-error-bg p-4 text-center space-y-2">
-                  <p className="text-sm text-error font-medium">{fetchError}</p>
-                  <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-accent">
-                    Retry
-                  </button>
-                </div>
+                <ErrorAlert
+                  copy={{
+                    ...fetchError,
+                    action: {
+                      label: "Reload",
+                      onClick: () => window.location.reload(),
+                    },
+                  }}
+                />
               ) : step === "pick-rotation" ? (
                 <div>
                   <h2 className="mb-3 text-lg font-semibold text-foreground">Select Rotation</h2>
@@ -964,15 +964,14 @@ export default function RecordPage() {
 
           {/* ── Error Display ─────────────────────────────────────────── */}
           {(micError || uploadError) && step !== "submitted" && (
-            <div className="mt-4 rounded-[var(--radius-md)] border border-border bg-error-bg p-4 text-center space-y-2">
-              <p className="text-sm text-error font-medium">{micError || uploadError}</p>
-              <button
-                type="button"
-                onClick={() => { setMicError(null); setUploadError(null); }}
-                className="text-sm font-medium text-accent"
-              >
-                Dismiss
-              </button>
+            <div className="mt-4">
+              <ErrorAlert
+                copy={(micError ?? uploadError) as ErrorCopy}
+                onDismiss={() => {
+                  setMicError(null);
+                  setUploadError(null);
+                }}
+              />
             </div>
           )}
         </div>
