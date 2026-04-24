@@ -45,6 +45,67 @@ function StatusBadge({ status }: { status: SessionStatus }) {
   );
 }
 
+// ── Weekly Coaching Note nudge ────────────────────────────────────────────────
+// UBC Family Medicine (Coastal Site, July 1 2026 onward) encourages ≥1
+// Coaching Note per week while on each rotation. This card tells the
+// resident how they're doing against that cadence, without nagging.
+
+function WeeklyNudge({ sessions }: { sessions: FeedbackSession[] }) {
+  const WEEKLY_GOAL = 1;
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const countedStatuses = new Set<SessionStatus>([
+    "ready",
+    "exported",
+    "processing",
+  ]);
+  const thisWeek = sessions.filter((s) => {
+    const ts = new Date(s.created_at).getTime();
+    return ts >= sevenDaysAgo && countedStatuses.has(s.status);
+  }).length;
+
+  const onTrack = thisWeek >= WEEKLY_GOAL;
+  const label = thisWeek === 1 ? "Coaching Note" : "Coaching Notes";
+
+  return (
+    <div
+      className={`mx-6 mb-4 flex items-center gap-4 rounded-[var(--radius-lg)] border p-4 ${
+        onTrack
+          ? "border-success/40 bg-success-bg"
+          : "border-warning/40 bg-warning-bg"
+      }`}
+    >
+      <div
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
+          onTrack ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+        }`}
+      >
+        <span className="font-[family-name:var(--font-display)] text-2xl leading-none">
+          {thisWeek}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">
+          {label} this week
+        </p>
+        <p className="mt-0.5 text-xs text-muted">
+          {onTrack
+            ? `On track — weekly goal: ${WEEKLY_GOAL}+`
+            : `Weekly goal: ${WEEKLY_GOAL}+ · log one to stay on track`}
+        </p>
+      </div>
+      {!onTrack && (
+        <Link
+          href="/record"
+          className="shrink-0 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+        >
+          Log one
+        </Link>
+      )}
+    </div>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(dateString: string): string {
@@ -285,6 +346,9 @@ export function HomeClient({
         </Link>
       </div>
 
+      {/* Weekly Coaching Note cadence nudge */}
+      <WeeklyNudge sessions={sessions} />
+
       {/* Quick links */}
       <div className="px-6 pb-2">
         <Link
@@ -306,8 +370,12 @@ export function HomeClient({
               <MicrophoneIcon className="h-7 w-7 text-accent" />
             </div>
             <div className="space-y-1">
-              <p className="text-base font-medium text-foreground">No feedback yet</p>
-              <p className="text-sm text-muted">Record your first session to get started.</p>
+              <p className="text-base font-medium text-foreground">
+                No Coaching Notes yet
+              </p>
+              <p className="text-sm text-muted">
+                Record your first session to get started.
+              </p>
             </div>
             <Link
               href="/record"

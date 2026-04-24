@@ -1,5 +1,5 @@
 {
-  "name": "T-Res Field Note",
+  "name": "UBC FM Coaching Note",
   "program": "UBC Family Medicine",
   "specialty": "Family Medicine",
   "extraction_mode": "multi",
@@ -9,8 +9,8 @@
     "activity_type": {
       "type": "select",
       "label": "Activity Type",
-      "options": ["Field Note"],
-      "default": "Field Note"
+      "options": ["Coaching Note"],
+      "default": "Coaching Note"
     },
     "observation_type": {
       "type": "select",

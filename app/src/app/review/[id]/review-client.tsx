@@ -17,6 +17,77 @@ import {
   type ErrorCopy,
 } from "@/lib/errors";
 
+// ── Transcript formatter ──────────────────────────────────────────────────────
+// Detects "Speaker:" prefixes (Preceptor, Resident, Trainee, Attending, etc.)
+// and highlights them. Falls back to plain paragraphs for unlabeled text.
+
+const SPEAKER_PATTERN = /^([A-Z][a-zA-Z][a-zA-Z \-/]{1,30}?):\s*(.*)$/;
+const PRECEPTOR_SPEAKERS = new Set([
+  "preceptor",
+  "attending",
+  "staff",
+  "supervisor",
+]);
+
+function FormattedTranscript({ text }: { text: string }) {
+  // Split into turns: a new turn starts on a blank line OR a line that
+  // begins with "Speaker:". Accept either convention.
+  const lines = text.split(/\r?\n/);
+  const turns: { speaker: string | null; body: string }[] = [];
+  let current: { speaker: string | null; body: string } | null = null;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      if (current) {
+        turns.push(current);
+        current = null;
+      }
+      continue;
+    }
+    const match = line.match(SPEAKER_PATTERN);
+    if (match) {
+      if (current) turns.push(current);
+      current = { speaker: match[1], body: match[2] };
+    } else if (current) {
+      current.body += " " + line;
+    } else {
+      current = { speaker: null, body: line };
+    }
+  }
+  if (current) turns.push(current);
+
+  if (turns.every((t) => t.speaker === null)) {
+    // No speaker labels detected — render as one block.
+    return (
+      <p className="text-sm italic text-muted leading-relaxed whitespace-pre-wrap">
+        {text}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 text-sm leading-relaxed">
+      {turns.map((turn, i) => (
+        <p key={i} className="text-foreground">
+          {turn.speaker && (
+            <span
+              className={`font-semibold ${
+                PRECEPTOR_SPEAKERS.has(turn.speaker.toLowerCase())
+                  ? "text-accent"
+                  : "text-foreground"
+              }`}
+            >
+              {turn.speaker}:
+            </span>
+          )}{" "}
+          <span className="text-muted">{turn.body}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 // ── Processing State ───────────────────────────────────────────────────────────
 
 function ProcessingView({
@@ -447,7 +518,7 @@ function AssessmentCard({
       {isMulti && total > 1 && (
         <div className="border-b border-border-light bg-border-light/50 px-5 py-2.5">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Field Note {index + 1} of {total}
+            Coaching Note {index + 1} of {total}
           </span>
         </div>
       )}
@@ -1080,13 +1151,22 @@ export default function ReviewClient({ session }: { session: SessionData }) {
           <>
             {/* Transcript */}
             {transcript && (
-              <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 space-y-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-                  Transcript
-                </h2>
-                <p className="text-sm italic text-muted leading-relaxed whitespace-pre-wrap">
-                  {transcript}
-                </p>
+              <div className="rounded-[var(--radius-lg)] border border-border bg-surface">
+                <div className="flex items-center justify-between px-5 pt-4">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                    Transcript
+                  </h2>
+                  <span className="text-[11px] text-subtle">scroll</span>
+                </div>
+                <div className="relative">
+                  <div className="max-h-[50vh] overflow-y-auto px-5 pb-5 pt-2">
+                    <FormattedTranscript text={transcript} />
+                  </div>
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-[var(--radius-lg)] bg-gradient-to-t from-surface to-transparent"
+                  />
+                </div>
               </div>
             )}
 

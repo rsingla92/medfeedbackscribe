@@ -33,6 +33,120 @@ interface FormTemplate {
 
 type Step = "pick-rotation" | "pick-preceptor" | "pick-form" | "consent" | "recording" | "uploading" | "submitted";
 
+// ── Shared list helpers (search, count, scrollable container) ───────────────
+
+function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="relative mb-3">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"
+        />
+      </svg>
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-border bg-background pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-light"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Clear search"
+          className="absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-border-light"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className="h-3.5 w-3.5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ListCount({
+  total,
+  shown,
+  noun,
+  searching,
+}: {
+  total: number;
+  shown: number;
+  noun: string;
+  searching?: boolean;
+}) {
+  const label = (n: number) =>
+    `${n} ${noun}${n === 1 ? "" : noun.endsWith("s") ? "" : "s"}`;
+  return (
+    <p className="mb-2 flex items-center gap-1.5 text-xs text-muted">
+      <span className="h-1 w-1 rounded-full bg-muted/60" aria-hidden="true" />
+      {searching
+        ? `Showing ${shown} of ${label(total)}`
+        : `${label(total)} — scroll for more`}
+    </p>
+  );
+}
+
+function ScrollList({ children }: { children: React.ReactNode }) {
+  // max-h + overflow + bottom fade gradient so users see there's more
+  // content below the viewport. pointer-events:none on the fade so it
+  // doesn't swallow taps on the last item.
+  return (
+    <div className="relative">
+      <div className="space-y-2 max-h-[56vh] overflow-y-auto pr-1 pb-6 [scrollbar-gutter:stable]">
+        {children}
+      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent"
+      />
+    </div>
+  );
+}
+
+function EmptySearch({ query }: { query: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-center">
+      <p className="text-sm text-foreground font-medium">
+        No matches for &ldquo;{query}&rdquo;
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        Check the spelling or clear the search to see everything.
+      </p>
+    </div>
+  );
+}
+
 // ── Real Audio Waveform ───────────────────────────────────────────────────────
 
 function WaveformVisualizer({ analyser, isPaused }: { analyser: AnalyserNode | null; isPaused: boolean }) {
@@ -233,6 +347,10 @@ export default function RecordPage() {
   const [selectedFormTemplate, setSelectedFormTemplate] = useState("");
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<ErrorCopy | null>(null);
+
+  // Search state for the pick-rotation and pick-preceptor lists
+  const [rotationQuery, setRotationQuery] = useState("");
+  const [preceptorQuery, setPreceptorQuery] = useState("");
 
   // Flow state
   const [step, setStep] = useState<Step>("pick-rotation");
@@ -595,19 +713,60 @@ export default function RecordPage() {
                 />
               ) : step === "pick-rotation" ? (
                 <div>
-                  <h2 className="mb-3 text-lg font-semibold text-foreground">Select Rotation</h2>
-                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                    {rotations.map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => { setSelectedRotation(r.id); setStep("pick-preceptor"); }}
-                        className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
-                      >
-                        {r.name}
-                      </button>
-                    ))}
-                  </div>
+                  <h2 className="mb-3 text-lg font-semibold text-foreground">
+                    Select Rotation
+                  </h2>
+                  <SearchInput
+                    value={rotationQuery}
+                    onChange={setRotationQuery}
+                    placeholder="Search rotations..."
+                  />
+                  {(() => {
+                    const q = rotationQuery.trim().toLowerCase();
+                    const filtered = q
+                      ? rotations.filter(
+                          (r) =>
+                            r.name.toLowerCase().includes(q) ||
+                            (r.specialty ?? "").toLowerCase().includes(q),
+                        )
+                      : rotations;
+                    return (
+                      <>
+                        <ListCount
+                          total={rotations.length}
+                          shown={filtered.length}
+                          noun="rotation"
+                          searching={q.length > 0}
+                        />
+                        {filtered.length === 0 ? (
+                          <EmptySearch query={rotationQuery} />
+                        ) : (
+                          <ScrollList>
+                            {filtered.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRotation(r.id);
+                                  setStep("pick-preceptor");
+                                }}
+                                className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface active:bg-accent-light"
+                              >
+                                <span className="block text-base text-foreground">
+                                  {r.name}
+                                </span>
+                                {r.specialty && (
+                                  <span className="block text-xs text-muted mt-0.5">
+                                    {r.specialty}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </ScrollList>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ) : step === "pick-preceptor" ? (
                 <div>
@@ -617,20 +776,42 @@ export default function RecordPage() {
                   <h2 className="mb-3 text-lg font-semibold text-foreground">
                     Select Preceptor
                   </h2>
+                  <SearchInput
+                    value={preceptorQuery}
+                    onChange={setPreceptorQuery}
+                    placeholder="Search preceptors..."
+                  />
                   {(() => {
+                    const q = preceptorQuery.trim().toLowerCase();
                     const rotationSpecialty = rotations.find(
                       (r) => r.id === selectedRotation,
                     )?.specialty;
-                    const matching = rotationSpecialty
-                      ? preceptors.filter(
-                          (p) => p.specialty === rotationSpecialty,
-                        )
-                      : preceptors;
-                    const others = rotationSpecialty
-                      ? preceptors.filter(
-                          (p) => p.specialty !== rotationSpecialty,
-                        )
-                      : [];
+
+                    const matchQuery = (p: Preceptor) =>
+                      !q ||
+                      p.name.toLowerCase().includes(q) ||
+                      (p.specialty ?? "").toLowerCase().includes(q) ||
+                      (p.email ?? "").toLowerCase().includes(q);
+
+                    // When searching, show a flat filtered list — the
+                    // specialty split isn't useful once the user has
+                    // narrowed by text. Otherwise split into matching +
+                    // others grouped by rotation specialty.
+                    const filteredAll = preceptors.filter(matchQuery);
+                    const matching = q
+                      ? []
+                      : rotationSpecialty
+                        ? preceptors.filter(
+                            (p) => p.specialty === rotationSpecialty,
+                          )
+                        : preceptors;
+                    const others = q
+                      ? []
+                      : rotationSpecialty
+                        ? preceptors.filter(
+                            (p) => p.specialty !== rotationSpecialty,
+                          )
+                        : [];
 
                     const onPick = (id: string) => {
                       setSelectedPreceptor(id);
@@ -642,58 +823,101 @@ export default function RecordPage() {
                       }
                     };
 
-                    return (
-                      <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                        {rotationSpecialty && matching.length === 0 && (
-                          <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-3 text-xs text-muted">
-                            No preceptors listed for{" "}
-                            <span className="font-medium text-foreground">
-                              {rotationSpecialty}
-                            </span>
-                            . All preceptors shown below — or add a new one.
-                          </p>
-                        )}
-                        {matching.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => onPick(p.id)}
-                            className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface active:bg-accent-light"
-                          >
-                            <span className="block text-base text-foreground">
-                              {p.name}
-                            </span>
-                            {p.specialty && (
-                              <span className="block text-xs text-muted mt-0.5">
-                                {p.specialty}
-                              </span>
-                            )}
-                          </button>
-                        ))}
+                    if (q) {
+                      return (
+                        <>
+                          <ListCount
+                            total={preceptors.length}
+                            shown={filteredAll.length}
+                            noun="preceptor"
+                            searching
+                          />
+                          {filteredAll.length === 0 ? (
+                            <EmptySearch query={preceptorQuery} />
+                          ) : (
+                            <ScrollList>
+                              {filteredAll.map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => onPick(p.id)}
+                                  className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface active:bg-accent-light"
+                                >
+                                  <span className="block text-base text-foreground">
+                                    {p.name}
+                                  </span>
+                                  {p.specialty && (
+                                    <span className="block text-xs text-muted mt-0.5">
+                                      {p.specialty}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </ScrollList>
+                          )}
+                        </>
+                      );
+                    }
 
-                        {others.length > 0 && (
-                          <>
-                            <p className="mt-4 mb-1 text-[11px] font-medium uppercase tracking-widest text-subtle">
-                              Other specialties
+                    return (
+                      <>
+                        <ListCount
+                          total={preceptors.length}
+                          shown={matching.length + others.length}
+                          noun="preceptor"
+                        />
+                        <ScrollList>
+                          {rotationSpecialty && matching.length === 0 && (
+                            <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-3 text-xs text-muted">
+                              No preceptors listed for{" "}
+                              <span className="font-medium text-foreground">
+                                {rotationSpecialty}
+                              </span>
+                              . All preceptors shown below — or add a new one.
                             </p>
-                            {others.map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => onPick(p.id)}
-                                className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface/60 active:bg-accent-light"
-                              >
-                                <span className="block text-base text-foreground">
-                                  {p.name}
-                                </span>
+                          )}
+                          {matching.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => onPick(p.id)}
+                              className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface active:bg-accent-light"
+                            >
+                              <span className="block text-base text-foreground">
+                                {p.name}
+                              </span>
+                              {p.specialty && (
                                 <span className="block text-xs text-muted mt-0.5">
-                                  {p.specialty ?? "—"}
+                                  {p.specialty}
                                 </span>
-                              </button>
-                            ))}
-                          </>
-                        )}
-                      </div>
+                              )}
+                            </button>
+                          ))}
+
+                          {others.length > 0 && (
+                            <>
+                              <p className="mt-4 mb-1 text-[11px] font-medium uppercase tracking-widest text-subtle">
+                                Other specialties
+                              </p>
+                              {others.map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => onPick(p.id)}
+                                  className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface/60 active:bg-accent-light"
+                                >
+                                  <span className="block text-base text-foreground">
+                                    {p.name}
+                                  </span>
+                                  <span className="block text-xs text-muted mt-0.5">
+                                    {p.specialty ?? "—"}
+                                  </span>
+                                </button>
+                              ))}
+                            </>
+                          )}
+                        </ScrollList>
+                      </>
                     );
                   })()}
                   {/* Quick-add preceptor */}
@@ -765,7 +989,7 @@ export default function RecordPage() {
                       >
                         <span className="font-medium">{f.name}</span>
                         <span className="block text-sm text-muted mt-0.5">
-                          {f.extraction_mode === "multi" ? "1-5 field notes per conversation" : "One evaluation per shift"}
+                          {f.extraction_mode === "multi" ? "1-5 coaching notes per conversation" : "One evaluation per shift"}
                         </span>
                       </button>
                     ))}

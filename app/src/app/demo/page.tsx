@@ -35,6 +35,113 @@ const ROTATIONS = [
   "ICU / Critical Care", "Sports Medicine", "Addiction Medicine", "Public Health",
 ];
 
+const DEMO_TRANSCRIPT: { speaker: "Preceptor" | "Resident"; text: string }[] = [
+  {
+    speaker: "Preceptor",
+    text: "Okay, let's debrief. The abdominal pain case — the 58-year-old with the rectal bleeding. Walk me through your thinking when you first saw him.",
+  },
+  {
+    speaker: "Resident",
+    text: "Yeah. So when I walked in, he was otherwise healthy, hadn't seen a doctor in years. Intermittent lower abdominal pain for about two weeks, bright red blood in the stool a few times over the past week. No fevers, no weight loss that he knew of. My first thought was hemorrhoids given the bright red blood — but the two weeks of abdominal pain didn't really fit, so I wanted to widen the differential.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "Good. What did you widen it to?",
+  },
+  {
+    speaker: "Resident",
+    text: "Hemorrhoids, anal fissure, diverticular disease, infectious colitis, IBD, and colorectal cancer. His age and the fact that he'd never had a colonoscopy pushed malignancy up the list for me.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "That's actually where I want to stop you — that's the thing you did best on this case. You caught the family history. You asked a follow-up question I wouldn't necessarily have asked at your stage.",
+  },
+  {
+    speaker: "Resident",
+    text: "The uncle with colon cancer?",
+  },
+  {
+    speaker: "Preceptor",
+    text: "Right. And more importantly you asked what age — which came back at 46. That moves the pretest probability for a malignancy a lot. It also changes what you tell him about urgency of workup. He didn't volunteer it, did he?",
+  },
+  {
+    speaker: "Resident",
+    text: "No, he didn't. I only got it when I did the full family history. A lot of people stop after 'anything run in the family?' and I almost did, but I kept going because the blood plus the abdominal pain didn't add up.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "That's the point. Hold onto that habit. Now. The exam.",
+  },
+  {
+    speaker: "Resident",
+    text: "Yeah...",
+  },
+  {
+    speaker: "Preceptor",
+    text: "Your abdominal exam was, let's say, gentle.",
+  },
+  {
+    speaker: "Resident",
+    text: "I know. I was trying not to cause him pain — he was already uncomfortable.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "I get it. But a superficial palp on someone with two weeks of abdominal pain doesn't give you the information you need. You can go deep and be kind at the same time. You warn the patient, you watch their face, you let them stop you. But you have to actually palpate. What would you have found if you'd gone deeper today?",
+  },
+  {
+    speaker: "Resident",
+    text: "Probably nothing palpable. But I would have known whether there was guarding or rebound.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "Exactly. You didn't have that information when you presented the plan. Which brings me to the plan itself.",
+  },
+  {
+    speaker: "Resident",
+    text: "CBC, electrolytes, renal function, lipase, CRP, and a CT abdomen-pelvis with contrast.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "All reasonable. What was missing?",
+  },
+  {
+    speaker: "Resident",
+    text: "Hmm. FIT testing?",
+  },
+  {
+    speaker: "Preceptor",
+    text: "FIT's not the right test in front of someone who's actively bleeding. But you also didn't order a type and screen, and you were ready to send him home before the CT was read. If that CT had shown an obstruction or a perforation, you'd have had no blood ready.",
+  },
+  {
+    speaker: "Resident",
+    text: "Oh. Yeah, that's a good point.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "Small thing, but it's the thing that bites you on a busy night. Type and screen anyone where you might plausibly need blood. Cheap, fast, saves you.",
+  },
+  {
+    speaker: "Resident",
+    text: "Okay. That's going into my notes.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "Your communication with him was good, though. He was anxious, and you didn't rush him. You explained the CT in plain language. You told him what you were worried about without scaring him. That's a real skill and it's not always there at PGY-2.",
+  },
+  {
+    speaker: "Resident",
+    text: "Thanks. I appreciate that.",
+  },
+  {
+    speaker: "Preceptor",
+    text: "So — summary. History-taking, especially family history, very strong. Keep doing that. Physical exam, work on depth of palpation. Plan was solid except for the type-and-screen miss. Communication was excellent. Fair?",
+  },
+  {
+    speaker: "Resident",
+    text: "Fair. Thank you.",
+  },
+];
+
 const MOCK_ASSESSMENT = {
   outputs: [
     {
@@ -189,7 +296,7 @@ export default function DemoPage() {
                     if (rotation === "Emergency Medicine") {
                       setStep("pick-form");
                     } else {
-                      setFormType("Field Note");
+                      setFormType("Coaching Note");
                       setStep("consent");
                     }
                   }}
@@ -213,11 +320,11 @@ export default function DemoPage() {
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => { setFormType("Field Note"); setStep("consent"); }}
+                onClick={() => { setFormType("Coaching Note"); setStep("consent"); }}
                 className={listBtn}
               >
-                <span className="font-medium">Field Note</span>
-                <span className="block text-sm text-muted mt-0.5">1-5 field notes per conversation</span>
+                <span className="font-medium">Coaching Note</span>
+                <span className="block text-sm text-muted mt-0.5">1-5 coaching notes per conversation</span>
               </button>
               <button
                 type="button"
@@ -334,15 +441,29 @@ export default function DemoPage() {
             </div>
 
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-subtle">Transcript</h3>
-              <div className="rounded-xl border border-border bg-surface p-4">
-                <p className="text-sm italic text-muted leading-relaxed">
-                  &ldquo;Overall you did a good job today. Your history was thorough — you caught the
-                  family history of colon cancer which was important for this patient. Your physical
-                  exam technique needs work, especially abdominal palpation — you were too superficial.
-                  Your plan was reasonable but you should have considered imaging earlier. You
-                  communicated well with the patient and they seemed comfortable with you.&rdquo;
-                </p>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-subtle">
+                  Transcript
+                </h3>
+                <span className="text-[11px] text-subtle">~4 min · scroll</span>
+              </div>
+              <div className="rounded-xl border border-border bg-surface">
+                <div className="max-h-[50vh] overflow-y-auto p-4 space-y-3 text-sm leading-relaxed">
+                  {DEMO_TRANSCRIPT.map((turn, i) => (
+                    <p key={i} className="text-foreground">
+                      <span
+                        className={`font-semibold ${
+                          turn.speaker === "Preceptor"
+                            ? "text-accent"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {turn.speaker}:
+                      </span>{" "}
+                      <span className="text-muted">{turn.text}</span>
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
 

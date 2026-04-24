@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { upsertProfile } from "@/lib/db/queries";
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -11,19 +15,29 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as {
       full_name?: string;
+      email?: string;
       program?: string | null;
       specialty?: string | null;
       year_of_training?: number | null;
       site?: string | null;
     };
 
-    if (!body.full_name?.trim()) {
+    const fullName = body.full_name?.trim();
+    if (!fullName) {
       return Response.json({ error: "Full name required" }, { status: 400 });
     }
 
+    const email = body.email?.trim();
+    if (!email || !isValidEmail(email)) {
+      return Response.json(
+        { error: "A valid institutional email is required" },
+        { status: 400 },
+      );
+    }
+
     await upsertProfile(session.user.id, {
-      full_name: body.full_name.trim(),
-      email: session.user.email ?? null,
+      full_name: fullName,
+      email,
       program: body.program ?? null,
       specialty: body.specialty ?? null,
       year_of_training: body.year_of_training ?? null,
