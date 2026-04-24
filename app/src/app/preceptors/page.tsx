@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 interface Preceptor {
   id: string;
@@ -14,7 +13,6 @@ interface Preceptor {
 
 export default function PreceptorsPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [preceptors, setPreceptors] = useState<Preceptor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,18 +33,17 @@ export default function PreceptorsPage() {
   const fetchPreceptors = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: err } = await supabase
-      .from("preceptors")
-      .select("id, name, email, specialty, site")
-      .order("name");
-
-    if (err) {
-      setError(err.message);
-    } else {
-      setPreceptors(data ?? []);
+    try {
+      const res = await fetch("/api/preceptors");
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      const body = (await res.json()) as { preceptors: Preceptor[] };
+      setPreceptors(body.preceptors);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load preceptors");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     fetchPreceptors();
@@ -83,25 +80,30 @@ export default function PreceptorsPage() {
       site: formSite.trim() || null,
     };
 
-    if (editingId) {
-      const { error: err } = await supabase
-        .from("preceptors")
-        .update(payload)
-        .eq("id", editingId);
-      if (err) {
-        setError(err.message);
+    try {
+      const res = editingId
+        ? await fetch(`/api/preceptors/${editingId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetch("/api/preceptors", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(body?.error ?? `Failed (${res.status})`);
         setSaving(false);
         return;
       }
-    } else {
-      const { error: err } = await supabase
-        .from("preceptors")
-        .insert(payload);
-      if (err) {
-        setError(err.message);
-        setSaving(false);
-        return;
-      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save preceptor");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -110,13 +112,11 @@ export default function PreceptorsPage() {
   }
 
   async function handleDelete(id: string) {
-    const { error: err } = await supabase
-      .from("preceptors")
-      .delete()
-      .eq("id", id);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/preceptors/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete preceptor");
     }
     setDeletingId(null);
     fetchPreceptors();

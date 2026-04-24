@@ -1,6 +1,14 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
 import { isValidUUID } from "@/lib/uuid";
+import {
+  getRecordingSessionWithJoins,
+  listAssessmentsForSession,
+  getFormTemplate,
+  getProfile,
+  markAssessmentsExported,
+  updateRecordingSessionStatus,
+} from "@/lib/db/queries";
 
 // ── CSV Helpers ─────────────────────────────────────────────────────────────────
 
@@ -41,80 +49,42 @@ export async function POST(
       return Response.json({ error: "Invalid session ID" }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
-    // Authenticate
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const authSession = await auth();
+    if (!authSession?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = authSession.user.id;
 
-    // Fetch session with joined data
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select(
-        "id, user_id, date, form_template_id, preceptor_id, created_at, preceptor:preceptors(name, email), rotation:rotations(name)"
-      )
-      .eq("id", sessionId)
-      .single();
-
-    if (sessionError || !session) {
+    const session = await getRecordingSessionWithJoins(sessionId, userId);
+    if (!session) {
       return Response.json({ error: "Session not found" }, { status: 404 });
     }
 
-    if (session.user_id !== user.id) {
-      return Response.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const profile = await getProfile(userId);
+    const residentName =
+      profile?.full_name ?? authSession.user.email ?? "Unknown";
 
-    // Fetch resident profile name
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-    const residentName = profile?.full_name ?? user.email ?? "Unknown";
-
-    // Fetch assessments
-    const { data: assessments, error: assessmentsError } = await supabase
-      .from("assessments")
-      .select(
-        "id, output_index, structured_fields, competency_tags, narrative_summary, coaching_did_well, coaching_consider"
-      )
-      .eq("session_id", sessionId)
-      .order("output_index", { ascending: true });
-
-    if (assessmentsError || !assessments || assessments.length === 0) {
+    const assessments = await listAssessmentsForSession(sessionId, userId);
+    if (assessments.length === 0) {
       return Response.json(
         { error: "No assessments found for this session" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    // Fetch form template
-    const { data: formTemplate, error: templateError } = await supabase
-      .from("form_templates")
-      .select("name, fields")
-      .eq("id", session.form_template_id)
-      .single();
-
-    if (templateError || !formTemplate) {
+    const formTemplate = await getFormTemplate(session.form_template_id);
+    if (!formTemplate) {
       return Response.json(
         { error: "Form template not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    // Normalize joined data
-    const preceptor = Array.isArray(session.preceptor)
-      ? session.preceptor[0]
-      : session.preceptor;
-    const rotation = Array.isArray(session.rotation)
-      ? session.rotation[0]
-      : session.rotation;
+    const preceptor = {
+      name: session.preceptor_name,
+      email: session.preceptor_email,
+    };
+    const rotation = { name: session.rotation_name };
 
     // ── Build CSV ─────────────────────────────────────────────────────────────
 
@@ -202,30 +172,17 @@ export async function POST(
       ? `${effectiveName}-${safePreceptor}-${dateStr}.csv`
       : `${effectiveName}-${dateStr}.csv`;
 
-    // Mark as exported in DB before returning the file so the status is always
-    // persisted even if the client disconnects mid-download.
-    const assessmentIds = assessments.map((a) => a.id);
-    const { error: assessmentUpdateError } = await supabase
-      .from("assessments")
-      .update({ exported_at: new Date().toISOString() })
-      .in("id", assessmentIds);
-
-    if (assessmentUpdateError) {
-      throw new Error(`Failed to record export timestamp: ${assessmentUpdateError.message}`);
-    }
-
-    const { error: sessionUpdateError } = await supabase
-      .from("sessions")
-      .update({ status: "exported" })
-      .eq("id", sessionId);
-
-    if (sessionUpdateError) {
-      // assessments.exported_at was already written above; log the partial state
-      // so it can be reconciled manually before failing the request.
+    await markAssessmentsExported(sessionId, userId);
+    const updated = await updateRecordingSessionStatus(
+      sessionId,
+      userId,
+      "exported",
+    );
+    if (!updated) {
       console.error(
-        `Partial export state: assessments marked exported but session ${sessionId} status update failed — ${sessionUpdateError.message}`
+        `Partial export state: assessments marked exported but session ${sessionId} status update failed`,
       );
-      throw new Error(`Failed to update session status: ${sessionUpdateError.message}`);
+      throw new Error("Failed to update session status");
     }
 
     return new Response(csv, {

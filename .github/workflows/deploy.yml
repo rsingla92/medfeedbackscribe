@@ -1,0 +1,140 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Debrief web → AWS App Runner deploy pipeline
+#
+# Triggered on push to master. Builds the Next.js container, pushes to ECR
+# (`debrief-web`), and waits for App Runner to finish rolling out the new
+# image. App Runner auto-deploys on every `:latest` push because the CDK sets
+# `autoDeploymentsEnabled: true` — no explicit StartDeployment call needed.
+#
+# ── Required GitHub repository secrets ──
+#   APPRUNNER_SERVICE_ARN  App Runner service ARN (CDK compute stack output)
+#   APPRUNNER_URL          App Runner service URL, no scheme
+#                          (e.g. abc123.ca-central-1.awsapprunner.com)
+#   ECR_REPOSITORY_URI     Full ECR repo URI (CDK compute stack output)
+#                          e.g. 687591846902.dkr.ecr.ca-central-1.amazonaws.com/debrief-web
+#
+# ── Required IAM ──
+#   OIDC role `debrief-github-deploy` (created by CDK compute stack) trusts
+#   this repo via GitHub Actions OIDC. Role ARN is hardcoded below — pull
+#   the canonical value from the CDK stack output and update if the account
+#   ID changes.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-master
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  # Hardcoded per the Phase 7 spec — CDK compute stack output for the
+  # `debrief-github-deploy` OIDC role. Update if the AWS account changes.
+  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::687591846902:role/debrief-github-deploy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.1.42"
+
+      - name: Install dependencies
+        working-directory: app
+        run: bun install --frozen-lockfile
+
+      # Gate the deploy on tests passing. continue-on-error defaults to false,
+      # so a failing test aborts the job before we touch ECR or App Runner.
+      - name: Run unit tests
+        working-directory: app
+        run: bun run test
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push container image
+        env:
+          ECR_REPO: ${{ secrets.ECR_REPOSITORY_URI }}
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --push \
+            --platform linux/amd64 \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            -t "${ECR_REPO}:latest" \
+            -t "${ECR_REPO}:${GITHUB_SHA}" \
+            ./app
+
+      # App Runner has autoDeploymentsEnabled: true (set by the CDK compute
+      # stack), so pushing a new image with the :latest tag automatically
+      # kicks off a deployment. No explicit `start-deployment` call needed.
+      - name: Wait for App Runner deployment to complete
+        env:
+          SERVICE_ARN: ${{ secrets.APPRUNNER_SERVICE_ARN }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for App Runner service to reach RUNNING state..."
+          # Poll every 15s, up to 10 minutes total.
+          for i in $(seq 1 40); do
+            status=$(aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --region "$AWS_REGION" \
+              --query 'Service.Status' \
+              --output text)
+            echo "  [$i/40] status=$status"
+            case "$status" in
+              RUNNING)
+                echo "App Runner service is RUNNING."
+                exit 0
+                ;;
+              CREATE_FAILED|DELETED|DELETE_FAILED|PAUSED)
+                echo "App Runner entered terminal/failure state: $status" >&2
+                exit 1
+                ;;
+            esac
+            sleep 15
+          done
+          echo "Timed out after 10 minutes waiting for App Runner." >&2
+          exit 1
+
+      - name: Smoke test /api/health
+        env:
+          APPRUNNER_URL: ${{ secrets.APPRUNNER_URL }}
+        run: |
+          set -euo pipefail
+          # Give App Runner a few seconds to fully cut traffic over.
+          sleep 10
+          curl -fsS --max-time 15 "https://${APPRUNNER_URL}/api/health" | tee /tmp/health.json
+          grep -q '"status":"ok"' /tmp/health.json

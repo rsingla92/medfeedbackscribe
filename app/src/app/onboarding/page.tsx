@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 const PROGRAMS = [
   "UBC Family Medicine",
@@ -28,7 +27,6 @@ const SPECIALTIES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [fullName, setFullName] = useState("");
   const [program, setProgram] = useState("");
@@ -45,26 +43,23 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Not authenticated. Please sign in again.");
-      setSaving(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase
-      .from("profiles")
-      .upsert({
-        id: user.id,
+    const res = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         full_name: fullName.trim(),
         program: program || null,
         specialty: specialty || null,
         year_of_training: yearOfTraining ? parseInt(yearOfTraining) : null,
         site: site.trim() || null,
-      });
+      }),
+    });
 
-    if (insertError) {
-      setError(insertError.message);
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      setError(body?.error ?? "Failed to save profile");
       setSaving(false);
       return;
     }

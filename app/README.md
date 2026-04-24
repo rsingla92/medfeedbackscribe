@@ -20,6 +20,22 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Docker build + local run
+
+The app ships as a container for AWS App Runner (`ca-central-1`). The
+Dockerfile uses Next.js `output: 'standalone'` and runs as a non-root user.
+
+```bash
+# Build the image (from the app/ directory)
+docker build -t debrief-web .
+
+# Run locally — env vars come from .env.local (see .env.local.example)
+docker run --rm -p 3000:3000 --env-file .env.local debrief-web
+```
+
+The container serves `/api/health` with HTTP 200, which App Runner uses as
+its health check.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -29,8 +45,8 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app deploys to AWS App Runner via the GitHub Actions workflow at
+`.github/workflows/deploy.yml`. Every push to `master` builds a new image,
+pushes it to ECR (`debrief-web`), and App Runner rolls it out automatically.

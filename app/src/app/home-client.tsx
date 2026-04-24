@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "next-auth/react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -189,7 +189,6 @@ export function HomeClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
 
   const [sessions, setSessions] = useState<FeedbackSession[]>(initialSessions);
   const [toast, setToast] = useState<string | null>(null);
@@ -213,40 +212,51 @@ export function HomeClient({
 
     const interval = setInterval(async () => {
       const processingIds = sessions
-        .filter((s) => s.status === "processing" || s.status === "uploading" || s.status === "created")
+        .filter(
+          (s) =>
+            s.status === "processing" ||
+            s.status === "uploading" ||
+            s.status === "created",
+        )
         .map((s) => s.id);
 
-      const { data } = await supabase
-        .from("sessions")
-        .select("id, status")
-        .in("id", processingIds);
+      if (processingIds.length === 0) return;
 
-      if (data) {
-        setSessions((prev) =>
-          prev.map((s) => {
-            const updated = data.find((d) => d.id === s.id);
-            if (updated && updated.status !== s.status) {
-              if (updated.status === "ready") {
-                setToast("Assessment ready for review!");
-              } else if (updated.status === "processing_failed") {
-                setToast("Processing failed. Tap the session to retry.");
-              }
-              return { ...s, status: updated.status as SessionStatus };
+      const res = await fetch("/api/recording-sessions/statuses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: processingIds }),
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as {
+        statuses: { id: string; status: string }[];
+      };
+
+      setSessions((prev) =>
+        prev.map((s) => {
+          const updated = body.statuses.find((d) => d.id === s.id);
+          if (updated && updated.status !== s.status) {
+            if (updated.status === "ready") {
+              setToast("Assessment ready for review!");
+            } else if (updated.status === "processing_failed") {
+              setToast("Processing failed. Tap the session to retry.");
             }
-            return s;
-          })
-        );
-      }
+            return { ...s, status: updated.status as SessionStatus };
+          }
+          return s;
+        }),
+      );
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [sessions, supabase]);
+  }, [sessions]);
 
   const handleSignOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await signOut({ redirect: false });
     router.push("/auth");
     router.refresh();
-  }, [supabase, router]);
+  }, [router]);
 
   return (
     <main className="flex flex-1 flex-col">

@@ -1,0 +1,31 @@
+{
+  "name": "debrief-pipeline-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Debrief SQS-triggered pipeline worker — Phase 2 Lambda implementation.",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild handler.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --external:@aws-sdk/* --sourcemap",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@google-cloud/vertexai": "^1.9.0",
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.654.0",
+    "@aws-sdk/client-secrets-manager": "^3.654.0",
+    "@aws-sdk/client-sesv2": "^3.654.0",
+    "@aws-sdk/s3-request-presigner": "^3.654.0",
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.14.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.2"
+  }
+}

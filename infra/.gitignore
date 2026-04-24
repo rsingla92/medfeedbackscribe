@@ -1,0 +1,34 @@
+# CDK asset staging dir
+.cdk.staging
+cdk.out
+
+# dependencies
+node_modules
+
+# compiled output
+*.js
+*.d.ts
+!jest.config.js
+!lambda/**/*.js
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+
+# env
+.env
+.env.local
+.env.*.local
+
+# AWS
+.aws-sam

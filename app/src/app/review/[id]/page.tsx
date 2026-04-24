@@ -1,10 +1,13 @@
 export const dynamic = "force-dynamic";
 
-import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { sql } from "@/lib/db/client";
+import {
+  listAssessmentsForSession,
+  listPipelineLogs,
+} from "@/lib/db/queries";
 import ReviewClient from "./review-client";
-
-// ── Types shared between server and client ─────────────────────────────────────
 
 export interface SessionData {
   id: string;
@@ -33,70 +36,80 @@ export interface Assessment {
   llm_confidence: Record<string, number>;
 }
 
-// ── Server Component (data fetching) ───────────────────────────────────────────
+interface SessionWithJoinsRow {
+  id: string;
+  status: string;
+  created_at: string;
+  preceptor_name: string | null;
+  rotation_name: string | null;
+  form_name: string | null;
+  extraction_mode: "multi" | "single" | null;
+  transcript_clean: string | null;
+  audio_path: string | null;
+  duration_seconds: number | null;
+}
 
 export default async function ReviewPage(props: PageProps<"/review/[id]">) {
   const { id } = await props.params;
-  const supabase = await createClient();
 
-  // Fetch session with all related data
-  const { data: session, error } = await supabase
-    .from("sessions")
-    .select(
-      `
-      id,
-      status,
-      created_at,
-      preceptor:preceptors(name),
-      rotation:rotations(name),
-      form_template:form_templates(name, extraction_mode),
-      recording:recordings(transcript_clean, audio_path, duration_seconds),
-      assessments(id, output_index, structured_fields, competency_tags, narrative_summary, coaching_did_well, coaching_consider, llm_confidence)
-    `
-    )
-    .eq("id", id)
-    .single();
+  const authSession = await auth();
+  if (!authSession?.user?.id) redirect("/auth");
+  const userId = authSession.user.id;
 
-  if (error || !session) {
-    notFound();
-  }
+  const rows = await sql<SessionWithJoinsRow[]>`
+    select
+      rs.id, rs.status, rs.created_at,
+      p.name as preceptor_name,
+      r.name as rotation_name,
+      ft.name as form_name, ft.extraction_mode,
+      rec.transcript_clean, rec.audio_path, rec.duration_seconds
+    from recording_sessions rs
+    left join preceptors p on p.id = rs.preceptor_id
+    left join rotations r on r.id = rs.rotation_id
+    left join form_templates ft on ft.id = rs.form_template_id
+    left join recordings rec on rec.session_id = rs.id
+    where rs.id = ${id} and rs.user_id = ${userId}
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row) notFound();
 
-  // Get current pipeline step if still processing
+  const assessmentRows = await listAssessmentsForSession(id, userId);
+
   let pipelineStep: string | null = null;
-  if (session.status === "processing") {
-    const { data: logs } = await supabase
-      .from("pipeline_logs")
-      .select("step, status")
-      .eq("session_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (logs && logs.length > 0) {
-      pipelineStep = logs[0].step;
-    }
+  if (row.status === "processing") {
+    const logs = await listPipelineLogs(id, userId);
+    pipelineStep = logs[0]?.step ?? null;
   }
 
-  // Normalize Supabase joined data (comes back as arrays for single relations)
   const normalized: SessionData = {
-    id: session.id,
-    status: session.status as SessionData["status"],
-    created_at: session.created_at,
-    preceptor: Array.isArray(session.preceptor)
-      ? session.preceptor[0]
-      : session.preceptor,
-    rotation: Array.isArray(session.rotation)
-      ? session.rotation[0]
-      : session.rotation,
-    form_template: Array.isArray(session.form_template)
-      ? session.form_template[0]
-      : session.form_template,
-    recording: Array.isArray(session.recording)
-      ? session.recording[0] ?? null
-      : session.recording,
-    assessments: (session.assessments ?? []).sort(
-      (a: { output_index: number }, b: { output_index: number }) =>
-        a.output_index - b.output_index
-    ),
+    id: row.id,
+    status: row.status as SessionData["status"],
+    created_at: row.created_at,
+    preceptor: row.preceptor_name ? { name: row.preceptor_name } : null,
+    rotation: row.rotation_name ? { name: row.rotation_name } : null,
+    form_template:
+      row.form_name && row.extraction_mode
+        ? { name: row.form_name, extraction_mode: row.extraction_mode }
+        : null,
+    recording:
+      row.audio_path || row.transcript_clean || row.duration_seconds != null
+        ? {
+            transcript_clean: row.transcript_clean,
+            audio_path: row.audio_path,
+            duration_seconds: row.duration_seconds,
+          }
+        : null,
+    assessments: assessmentRows.map((a) => ({
+      id: a.id,
+      output_index: a.output_index,
+      structured_fields: a.structured_fields,
+      competency_tags: a.competency_tags ?? [],
+      narrative_summary: a.narrative_summary ?? "",
+      coaching_did_well: a.coaching_did_well,
+      coaching_consider: a.coaching_consider,
+      llm_confidence: (a.llm_confidence ?? {}) as Record<string, number>,
+    })),
     pipeline_step: pipelineStep,
   };
 

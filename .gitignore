@@ -6,8 +6,24 @@
 node_modules/
 .env
 .env.local
+# Backup of pre-migration env files — may contain secrets
+.env.local.old-supabase
+**/.env.local.old*
 
 # Playwright
 app/playwright-report/
 app/test-results/
 app/blob-report/
+
+# Claude Code local state
+.claude/
+app/.claude/
+
+# CDK build artifacts
+infra/cdk.out/
+infra/node_modules/
+infra/lambda/pipeline/node_modules/
+infra/lambda/pipeline/dist/
+
+# Personal resume summary (not for sharing)
+medfeedbackscribe-resume-summary.md

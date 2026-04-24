@@ -1,48 +1,29 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
 import { isValidUUID } from "@/lib/uuid";
+import { enqueueReprocess } from "@/lib/storage/sqs";
+import { sql } from "@/lib/db/client";
+import {
+  getRecordingSession,
+  getRecordingBySession,
+  updateRecordingSessionStatus,
+  clearTranscriptClean,
+} from "@/lib/db/queries";
 
-/**
- * POST /api/reprocess
- *
- * Allows a session owner to requeue processing for a session that has stalled
- * or explicitly failed.
- *
- * Allowed when:
- *   - status IN ('processing_failed', 'processing')
- *   - updated_at < now() - 5 minutes  (avoids double-trigger for recent starts)
- *
- * On success:
- *   - Resets status to 'created' and clears transcript_clean so the pipeline
- *     starts from a clean slate (transcript_raw is preserved for re-transcription).
- *   - Internally fires POST /api/process to kick off the pipeline.
- *   - Returns 202 { status: 'reprocessing' }
- *
- * On conflict (session not eligible):
- *   - Returns 409 { error: '...' }
- */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Authenticate
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
-    // Parse body
     let body: unknown;
     try {
       body = await request.json();
     } catch {
       return Response.json({ error: "Invalid JSON body" }, { status: 400 });
     }
-
     const { sessionId } = body as Record<string, unknown>;
 
     if (
@@ -52,101 +33,74 @@ export async function POST(request: NextRequest) {
     ) {
       return Response.json(
         { error: "Missing or invalid sessionId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Fetch session — RLS ensures only the owner can see it
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select("id, user_id, status, updated_at")
-      .eq("id", sessionId)
-      .single();
-
-    if (sessionError || !session) {
+    const rs = await getRecordingSession(sessionId, userId);
+    if (!rs) {
       return Response.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Ownership check (belt-and-suspenders on top of RLS)
-    if (session.user_id !== user.id) {
-      return Response.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Status must be failed or stuck-processing
     const allowedStatuses = ["processing_failed", "processing"];
-    if (!allowedStatuses.includes(session.status)) {
+    if (!allowedStatuses.includes(rs.status)) {
       return Response.json(
         {
-          error: `Session cannot be reprocessed in status '${session.status}'. Only processing_failed or processing sessions may be retried.`,
+          error: `Session cannot be reprocessed in status '${rs.status}'. Only processing_failed or processing sessions may be retried.`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    // Recency guard: updated_at must be > 5 minutes ago to avoid double-trigger
-    const updatedAt = new Date(session.updated_at).getTime();
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    if (updatedAt > fiveMinutesAgo) {
+    const updatedAt = new Date(rs.updated_at).getTime();
+    if (updatedAt > Date.now() - 5 * 60 * 1000) {
       return Response.json(
         {
           error:
             "Session was updated less than 5 minutes ago. Wait a moment before retrying.",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    // Reset session to 'created' so /api/process accepts it
-    const { error: resetError } = await supabase
-      .from("sessions")
-      .update({ status: "created" })
-      .eq("id", sessionId);
+    const recording = await getRecordingBySession(sessionId, userId);
+    if (!recording?.audio_path) {
+      return Response.json(
+        { error: "No recording found for this session" },
+        { status: 404 },
+      );
+    }
 
-    if (resetError) {
-      console.error("Failed to reset session status:", resetError);
+    const reset = await updateRecordingSessionStatus(
+      sessionId,
+      userId,
+      "created",
+    );
+    if (!reset) {
       return Response.json(
         { error: "Failed to reset session for reprocessing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    // Clear transcript_clean so the pipeline re-runs from scratch.
-    // transcript_raw is preserved — the pipeline will re-transcribe from
-    // the original audio file regardless, so clearing clean just ensures
-    // no stale PHI-scrubbed text leaks into the re-extraction.
-    await supabase
-      .from("recordings")
-      .update({ transcript_clean: null })
-      .eq("session_id", sessionId);
+    await clearTranscriptClean(sessionId, userId);
 
-    // Trigger the pipeline by calling /api/process internally.
-    // We use fetch so the parallel agent's after() changes take effect
-    // automatically when both PRs are merged.
-    const processUrl = new URL("/api/process", request.url);
-    const processResponse = await fetch(processUrl.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Forward the session cookie so /api/process can authenticate
-        Cookie: request.headers.get("cookie") ?? "",
-      },
-      body: JSON.stringify({ sessionId }),
-    });
-
-    if (!processResponse.ok) {
-      // Pipeline trigger failed — roll back to processing_failed
-      await supabase
-        .from("sessions")
-        .update({ status: "processing_failed" })
-        .eq("id", sessionId);
-
-      const errBody = await processResponse
-        .json()
-        .catch(() => ({ error: "Unknown error" }));
-      console.error("Internal /api/process trigger failed:", errBody);
+    try {
+      await enqueueReprocess({
+        audioKey: recording.audio_path,
+        sessionId,
+      });
+    } catch (enqueueErr) {
+      // Roll back to processing_failed so the retry button stays available.
+      await sql`
+        update recording_sessions
+        set status = 'processing_failed'
+        where id = ${sessionId} and user_id = ${userId}
+      `;
+      console.error("SQS enqueue failed:", enqueueErr);
       return Response.json(
         { error: "Failed to start reprocessing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 

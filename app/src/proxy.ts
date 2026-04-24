@@ -1,15 +1,50 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { auth } from "@/lib/auth";
+
+const PUBLIC_PATHS = [
+  "/",
+  "/auth",
+  "/demo",
+  "/onboarding",
+  "/landing",
+  "/about",
+  "/contact",
+  "/for-programs",
+  "/security",
+  "/accessibility",
+  "/privacy",
+  "/terms",
+];
+
+const PUBLIC_API_PREFIXES = ["/api/auth", "/api/health", "/api/ready"];
+
+function isPublic(pathname: string): boolean {
+  if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
 
 export default async function proxy(request: NextRequest) {
-  // Dev-only: bypass auth for testing. Use DEV_BYPASS_AUTH (no NEXT_PUBLIC_ prefix)
-  // so this value is never baked into the client bundle at build time.
-  // Hard-blocked in production to prevent accidental bypass.
-  if (process.env.DEV_BYPASS_AUTH === "true" && process.env.NODE_ENV !== "production") {
+  if (
+    process.env.DEV_BYPASS_AUTH === "true" &&
+    process.env.NODE_ENV !== "production"
+  ) {
     return NextResponse.next();
   }
 
-  return await updateSession(request);
+  const { pathname } = request.nextUrl;
+  if (isPublic(pathname)) return NextResponse.next();
+
+  const session = await auth();
+  if (!session?.user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth";
+    url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

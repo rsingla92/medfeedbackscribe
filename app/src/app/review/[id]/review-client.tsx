@@ -8,7 +8,6 @@ import {
   type ChangeEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import type { SessionData, Assessment } from "./page";
 
 // ── Processing State ───────────────────────────────────────────────────────────
@@ -693,7 +692,6 @@ function ReprocessToast({
 
 export default function ReviewClient({ session }: { session: SessionData }) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [assessments, setAssessments] = useState(session.assessments);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -721,15 +719,18 @@ export default function ReviewClient({ session }: { session: SessionData }) {
   // Fetch signed URL for audio playback
   useEffect(() => {
     if (!session.recording?.audio_path) return;
-    const path = session.recording.audio_path;
-    supabase.storage
-      .from("recordings")
-      .createSignedUrl(path, 3600)
-      .then(({ data }) => {
-        if (data?.signedUrl) setAudioUrl(data.signedUrl);
-      });
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/recordings/${session.id}/signed-url`);
+      if (!res.ok || cancelled) return;
+      const body = (await res.json()) as { url?: string };
+      if (body.url && !cancelled) setAudioUrl(body.url);
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.recording?.audio_path]);
+  }, [session.recording?.audio_path, session.id]);
 
   // ── Unsaved changes warning ──────────────────────────────────────────────────
 
@@ -751,43 +752,27 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     if (sessionStatus !== "processing") return;
 
     const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from("sessions")
-        .select("status")
-        .eq("id", session.id)
-        .single();
+      const res = await fetch(
+        `/api/recording-sessions/${session.id}/status`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        status: SessionData["status"];
+        pipeline_step: string | null;
+        transcript_clean: string | null;
+      };
 
-      if (data && data.status !== "processing") {
-        setSessionStatus(data.status as SessionData["status"]);
-        // Reload the page to get fresh assessment data
+      if (data.status !== "processing") {
+        setSessionStatus(data.status);
         router.refresh();
         clearInterval(interval);
         return;
       }
 
-      // Update pipeline step
-      const { data: logs } = await supabase
-        .from("pipeline_logs")
-        .select("step")
-        .eq("session_id", session.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (logs && logs.length > 0) {
-        setPollingStep(logs[0].step);
-      }
-
-      // Fetch transcript preview once STT is done
-      if (!transcriptPreview) {
-        const { data: rec } = await supabase
-          .from("recordings")
-          .select("transcript_clean")
-          .eq("session_id", session.id)
-          .single();
-
-        if (rec?.transcript_clean) {
-          setTranscriptPreview(rec.transcript_clean);
-        }
+      if (data.pipeline_step) setPollingStep(data.pipeline_step);
+      if (!transcriptPreview && data.transcript_clean) {
+        setTranscriptPreview(data.transcript_clean);
       }
     }, 3000);
 
@@ -814,17 +799,19 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     setSaveError(null);
     try {
       for (const a of assessments) {
-        const { error } = await supabase
-          .from("assessments")
-          .update({
+        const res = await fetch(`/api/assessments/${a.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             structured_fields: a.structured_fields,
             competency_tags: a.competency_tags,
             narrative_summary: a.narrative_summary,
             coaching_did_well: a.coaching_did_well,
             coaching_consider: a.coaching_consider,
-          })
-          .eq("id", a.id);
-        if (error) throw error;
+            resident_edited: true,
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       }
       setHasUnsavedChanges(false);
       return true;

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -10,11 +9,13 @@ interface Preceptor {
   id: string;
   name: string;
   email: string;
+  specialty: string | null;
 }
 
 interface Rotation {
   id: string;
   name: string;
+  specialty: string | null;
 }
 
 interface FormTemplate {
@@ -215,7 +216,6 @@ function StopConfirmDialog({
 
 export default function RecordPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   // Setup state
   const [preceptors, setPreceptors] = useState<Preceptor[]>([]);
@@ -260,22 +260,33 @@ export default function RecordPage() {
       setFetchError(null);
 
       try {
-        const [preceptorRes, rotationRes, formTemplateRes] = await Promise.all([
-          supabase.from("preceptors").select("id, name, email").order("name"),
-          supabase.from("rotations").select("id, name").order("name"),
-          supabase.from("form_templates").select("id, name, extraction_mode").order("name"),
-        ]);
+        const [preceptorRes, rotationRes, formTemplateRes] = await Promise.all(
+          [
+            fetch("/api/preceptors"),
+            fetch("/api/rotations"),
+            fetch("/api/form-templates"),
+          ],
+        );
+        if (!preceptorRes.ok) throw new Error("preceptors");
+        if (!rotationRes.ok) throw new Error("rotations");
+        if (!formTemplateRes.ok) throw new Error("form_templates");
 
-        if (preceptorRes.error) throw preceptorRes.error;
-        if (rotationRes.error) throw rotationRes.error;
-        if (formTemplateRes.error) throw formTemplateRes.error;
+        const preceptorBody = (await preceptorRes.json()) as {
+          preceptors: Preceptor[];
+        };
+        const rotationBody = (await rotationRes.json()) as {
+          rotations: Rotation[];
+        };
+        const formBody = (await formTemplateRes.json()) as {
+          templates: FormTemplate[];
+        };
 
-        setPreceptors(preceptorRes.data ?? []);
-        setRotations(rotationRes.data ?? []);
-        setFormTemplates(formTemplateRes.data ?? []);
+        setPreceptors(preceptorBody.preceptors);
+        setRotations(rotationBody.rotations);
+        setFormTemplates(formBody.templates);
       } catch (err) {
         setFetchError(
-          err instanceof Error ? err.message : "Failed to load setup data"
+          err instanceof Error ? err.message : "Failed to load setup data",
         );
       } finally {
         setLoading(false);
@@ -320,23 +331,28 @@ export default function RecordPage() {
     if (!newPreceptorName.trim()) return;
     setAddingPreceptor(true);
 
-    const { data, error: err } = await supabase
-      .from("preceptors")
-      .insert({
-        name: newPreceptorName.trim(),
-        email: newPreceptorEmail.trim() || null,
-      })
-      .select("id, name, email")
-      .single();
-
-    if (!err && data) {
-      setPreceptors((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-      setShowAddPreceptor(false);
-      setNewPreceptorName("");
-      setNewPreceptorEmail("");
+    try {
+      const res = await fetch("/api/preceptors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newPreceptorName.trim(),
+          email: newPreceptorEmail.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        const { preceptor } = (await res.json()) as { preceptor: Preceptor };
+        setPreceptors((prev) =>
+          [...prev, preceptor].sort((a, b) => a.name.localeCompare(b.name)),
+        );
+        setShowAddPreceptor(false);
+        setNewPreceptorName("");
+        setNewPreceptorEmail("");
+      }
+    } finally {
+      setAddingPreceptor(false);
     }
-    setAddingPreceptor(false);
-  }, [supabase, newPreceptorName, newPreceptorEmail]);
+  }, [newPreceptorName, newPreceptorEmail]);
 
   // ── Start recording ──────────────────────────────────────────────────────────
 
@@ -441,84 +457,72 @@ export default function RecordPage() {
     setUploadError(null);
 
     try {
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Create session record
-      const { data: session, error: sessionError } = await supabase
-        .from("sessions")
-        .insert({
-          user_id: user.id,
+      const sessionRes = await fetch("/api/recording-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           preceptor_id: selectedPreceptor,
           rotation_id: selectedRotation || null,
           form_template_id: selectedFormTemplate,
           consent_confirmed: true,
-          status: "uploading",
-        })
-        .select("id")
-        .single();
-
-      if (sessionError) throw sessionError;
-      const sessionId = session.id;
-
-      // Upload audio to storage
-      const storagePath = `${user.id}/${sessionId}.webm`;
-      const { error: uploadErr } = await supabase.storage
-        .from("recordings")
-        .upload(storagePath, blob, {
-          contentType: "audio/webm",
-          upsert: false,
-        });
-
-      if (uploadErr) throw uploadErr;
-
-      // Create recording record
-      const { error: recordingErr } = await supabase.from("recordings").insert({
-        session_id: sessionId,
-        audio_path: storagePath,
+        }),
       });
+      if (!sessionRes.ok) {
+        const body = (await sessionRes.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(body?.error ?? `Failed to create session`);
+      }
+      const { session: sessionData } = (await sessionRes.json()) as {
+        session: { id: string };
+      };
+      const sessionId = sessionData.id;
 
-      if (recordingErr) throw recordingErr;
-
-      // Trigger processing pipeline (non-blocking). If this request fails (e.g.
-      // network/offline), the session remains in "uploading" until the user
-      // opens the review page and retries processing there.
-      fetch("/api/process", {
+      // Step 1: Request a presigned S3 PUT URL from the server. The server
+      // verifies ownership of the session and that contentType is allowed.
+      const uploadContentType = "audio/webm";
+      const urlRes = await fetch("/api/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-        // keepalive improves reliability across route transitions / page unload
-        keepalive: true,
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            let details = "";
-            try {
-              const text = await res.text();
-              if (text) {
-                details = ` Response body: ${text}`;
-              }
-            } catch {
-              // ignore body read errors
-            }
-            console.warn(
-              `Pipeline trigger responded with non-OK status (${res.status} ${res.statusText}).` +
-                " User can retry from the review page." +
-                details
-            );
-          }
-        })
-        .catch((err) => {
-          console.warn(
-            "Pipeline trigger request failed — user can retry from the review page:",
-            err
-          );
-        });
+        body: JSON.stringify({ sessionId, contentType: uploadContentType }),
+      });
+      if (!urlRes.ok) {
+        const errBody = await urlRes.json().catch(() => ({}));
+        throw new Error(errBody.error || `Failed to get upload URL (${urlRes.status})`);
+      }
+      const { url: presignedUrl, key: storagePath } = (await urlRes.json()) as {
+        url: string;
+        key: string;
+      };
 
-      // Show submitted confirmation
+      // Step 2: PUT the blob directly to S3. The Content-Type header must
+      // match what the URL was signed with.
+      const putRes = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": uploadContentType },
+        body: blob,
+      });
+      if (!putRes.ok) {
+        throw new Error(`S3 upload failed (${putRes.status})`);
+      }
+
+      // Step 3: Create the recording row with the S3 key. Downstream
+      // Lambda reads this key to process the audio.
+      const recordingRes = await fetch("/api/recording-sessions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          audio_path: storagePath,
+        }),
+      });
+      if (!recordingRes.ok) {
+        throw new Error(`Failed to record audio path (${recordingRes.status})`);
+      }
+
+      // Processing is driven by an S3 PutObject event → SQS → Lambda. We no
+      // longer fire /api/process here. The review page polls session.status
+      // and transitions to 'ready' once the Lambda finishes.
       setSubmittedSessionId(sessionId);
       setStep("submitted");
     } catch (err) {
@@ -527,7 +531,7 @@ export default function RecordPage() {
       );
       setStep("pick-rotation");
     }
-  }, [supabase, selectedPreceptor, selectedRotation, selectedFormTemplate, router]);
+  }, [selectedPreceptor, selectedRotation, selectedFormTemplate, router]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -610,28 +614,88 @@ export default function RecordPage() {
                   <p className="mb-1 text-xs text-subtle">
                     {rotations.find((r) => r.id === selectedRotation)?.name}
                   </p>
-                  <h2 className="mb-3 text-lg font-semibold text-foreground">Select Preceptor</h2>
-                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                    {preceptors.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPreceptor(p.id);
-                          // If only one form type, auto-select and go to consent
-                          if (formTemplates.length === 1) {
-                            setSelectedFormTemplate(formTemplates[0].id);
-                            setStep("consent");
-                          } else {
-                            setStep("pick-form");
-                          }
-                        }}
-                        className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface text-base text-foreground active:bg-accent-light"
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
+                  <h2 className="mb-3 text-lg font-semibold text-foreground">
+                    Select Preceptor
+                  </h2>
+                  {(() => {
+                    const rotationSpecialty = rotations.find(
+                      (r) => r.id === selectedRotation,
+                    )?.specialty;
+                    const matching = rotationSpecialty
+                      ? preceptors.filter(
+                          (p) => p.specialty === rotationSpecialty,
+                        )
+                      : preceptors;
+                    const others = rotationSpecialty
+                      ? preceptors.filter(
+                          (p) => p.specialty !== rotationSpecialty,
+                        )
+                      : [];
+
+                    const onPick = (id: string) => {
+                      setSelectedPreceptor(id);
+                      if (formTemplates.length === 1) {
+                        setSelectedFormTemplate(formTemplates[0].id);
+                        setStep("consent");
+                      } else {
+                        setStep("pick-form");
+                      }
+                    };
+
+                    return (
+                      <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                        {rotationSpecialty && matching.length === 0 && (
+                          <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-3 text-xs text-muted">
+                            No preceptors listed for{" "}
+                            <span className="font-medium text-foreground">
+                              {rotationSpecialty}
+                            </span>
+                            . All preceptors shown below — or add a new one.
+                          </p>
+                        )}
+                        {matching.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => onPick(p.id)}
+                            className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface active:bg-accent-light"
+                          >
+                            <span className="block text-base text-foreground">
+                              {p.name}
+                            </span>
+                            {p.specialty && (
+                              <span className="block text-xs text-muted mt-0.5">
+                                {p.specialty}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+
+                        {others.length > 0 && (
+                          <>
+                            <p className="mt-4 mb-1 text-[11px] font-medium uppercase tracking-widest text-subtle">
+                              Other specialties
+                            </p>
+                            {others.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => onPick(p.id)}
+                                className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface/60 active:bg-accent-light"
+                              >
+                                <span className="block text-base text-foreground">
+                                  {p.name}
+                                </span>
+                                <span className="block text-xs text-muted mt-0.5">
+                                  {p.specialty ?? "—"}
+                                </span>
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/* Quick-add preceptor */}
                   {!showAddPreceptor ? (
                     <button

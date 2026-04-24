@@ -1,0 +1,52 @@
+# Dependencies and build outputs — reinstalled / regenerated in the image
+node_modules
+.next
+out
+dist
+build
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Environment files — injected at runtime via App Runner / ECS task env
+.env
+.env.*
+!.env.local.example
+
+# Dev-only tooling
+.vscode
+.idea
+.DS_Store
+*.log
+
+# Tests and test artifacts
+tests
+playwright.config.ts
+playwright-report
+test-results
+vitest.config.ts
+coverage
+
+# Supabase local dev — migrations aren't needed in the runtime image
+supabase
+
+# Docs + misc
+README.md
+AGENTS.md
+CLAUDE.md
+*.md
+
+# Vercel leftovers
+.vercel
+vercel.json
+
+# Scripts are dev/ops helpers, not runtime code
+scripts
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+
+# Misc OS files
+Thumbs.db
