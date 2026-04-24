@@ -8,6 +8,7 @@ import {
   getProfile,
 } from "@/lib/db/queries";
 import { sql } from "@/lib/db/client";
+import { recordAudit } from "@/lib/db/audit";
 import {
   renderToBuffer,
   Document,
@@ -277,7 +278,7 @@ function buildPdfDocument(
 
 // ---------- Route Handler ----------
 export async function POST(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -378,6 +379,15 @@ export async function POST(
       );
       throw new Error("Failed to update session status");
     }
+
+    await recordAudit({
+      actorUserId: userId,
+      action: "session.export_pdf",
+      targetType: "recording_session",
+      targetId: sessionId,
+      result: "ok",
+      request,
+    });
 
     return new Response(new Uint8Array(pdfBuffer), {
       status: 200,

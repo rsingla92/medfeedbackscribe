@@ -16,6 +16,7 @@
 
 import { NextRequest } from "next/server";
 import { confirmProfileEmailByToken } from "@/lib/db/queries";
+import { recordAudit } from "@/lib/db/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,17 @@ export async function GET(request: NextRequest) {
     // from the DB result alone without leaking state, so treat these the
     // same — prompt the user to start over. Returning 404 here is a
     // deliberate signal for log triage.
+    // actorUserId is null because the user isn't required to be signed in
+    // when clicking the email link.
+    await recordAudit({
+      actorUserId: null,
+      action: "profile.email_confirmed",
+      targetType: "profile",
+      targetId: null,
+      result: "error",
+      request,
+      metadata: { reason: "token_invalid_or_expired" },
+    });
     return page({
       status: 404,
       title: "Link invalid or already used",
@@ -131,6 +143,14 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  await recordAudit({
+    actorUserId: userId,
+    action: "profile.email_confirmed",
+    targetType: "profile",
+    targetId: userId,
+    result: "ok",
+    request,
+  });
   return page({
     status: 200,
     title: "Email confirmed",

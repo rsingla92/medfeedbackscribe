@@ -9,6 +9,16 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudtrail from 'aws-cdk-lib/aws-cloudtrail';
 import * as ses from 'aws-cdk-lib/aws-ses';
 
+interface DebriefDataStackProps extends cdk.StackProps {
+  /**
+   * App Runner service URL (https://...). Optional — when known, it is added
+   * to the recordings-bucket CORS allow-list so the production web app can
+   * issue presigned uploads/downloads. Localhost dev origins are always
+   * included.
+   */
+  appRunnerUrl?: string;
+}
+
 /**
  * Debrief data-layer stack.
  *
@@ -25,7 +35,7 @@ export class DebriefDataStack extends cdk.Stack {
   public readonly recordingsBucket: s3.Bucket;
   public readonly logsBucket: s3.Bucket;
 
-  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: DebriefDataStackProps) {
     super(scope, id, props);
 
     // --------------------------------------------------------------------
@@ -76,6 +86,59 @@ export class DebriefDataStack extends cdk.Stack {
       resourceType: ec2.FlowLogResourceType.fromVpc(this.vpc),
       destination: ec2.FlowLogDestination.toCloudWatchLogs(flowLogGroup),
       trafficType: ec2.FlowLogTrafficType.ALL,
+    });
+
+    // --------------------------------------------------------------------
+    // 2b. VPC endpoints — keep PHI-adjacent traffic on the AWS backbone
+    //     instead of egressing through the NAT gateway to the public
+    //     internet. S3 is a (free) gateway endpoint; the others are
+    //     interface endpoints (ENI per AZ + hourly cost). All scoped to
+    //     the private-with-egress subnets where Lambda + App Runner live.
+    // --------------------------------------------------------------------
+    const vpcEndpointSg = new ec2.SecurityGroup(this, 'VpcEndpointSg', {
+      vpc: this.vpc,
+      description: 'Debrief VPC interface endpoints — 443 from inside VPC only',
+      allowAllOutbound: false,
+    });
+    vpcEndpointSg.addIngressRule(
+      ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
+      ec2.Port.tcp(443),
+      'HTTPS from inside the VPC',
+    );
+
+    this.vpc.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+      // Gateway endpoints attach to route tables, not subnets. Default
+      // selection covers all private subnets, which is what we want.
+    });
+
+    const interfaceEndpointSubnets: ec2.SubnetSelection = {
+      subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+    };
+
+    this.vpc.addInterfaceEndpoint('SecretsEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      privateDnsEnabled: true,
+      subnets: interfaceEndpointSubnets,
+      securityGroups: [vpcEndpointSg],
+    });
+    this.vpc.addInterfaceEndpoint('KmsEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.KMS,
+      privateDnsEnabled: true,
+      subnets: interfaceEndpointSubnets,
+      securityGroups: [vpcEndpointSg],
+    });
+    this.vpc.addInterfaceEndpoint('SqsEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.SQS,
+      privateDnsEnabled: true,
+      subnets: interfaceEndpointSubnets,
+      securityGroups: [vpcEndpointSg],
+    });
+    this.vpc.addInterfaceEndpoint('StsEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.STS,
+      privateDnsEnabled: true,
+      subnets: interfaceEndpointSubnets,
+      securityGroups: [vpcEndpointSg],
     });
 
     // --------------------------------------------------------------------
@@ -171,11 +234,16 @@ export class DebriefDataStack extends cdk.Stack {
       versioned: true,
       serverAccessLogsBucket: this.logsBucket,
       serverAccessLogsPrefix: 'recordings-access/',
-      // CORS — prototype: broad allow. TODO post-cutover tighten to the
-      // specific App Runner URL + localhost dev origin.
+      // CORS — explicit allow-list. Wildcard origin is refused; the App
+      // Runner production URL can be injected via stack props once known.
       cors: [
         {
-          allowedOrigins: ['*'],
+          allowedOrigins: [
+            'http://localhost:3000',
+            'http://localhost:6969',
+            'https://debrief.whitecoatprep.com',
+            ...(props?.appRunnerUrl ? [props.appRunnerUrl] : []),
+          ],
           allowedMethods: [
             s3.HttpMethods.PUT,
             s3.HttpMethods.GET,

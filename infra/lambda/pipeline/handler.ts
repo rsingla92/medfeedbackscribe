@@ -74,6 +74,24 @@ function log(level: LogLevel, msg: string, fields: Record<string, unknown> = {})
   else console.log(JSON.stringify(entry));
 }
 
+/**
+ * Redact the userId portion of an S3 object key for logging.
+ *
+ *   "{userId}/{sessionId}.webm"  →  "{userId[0..7]}…/{sessionId}.webm"
+ *
+ * userId is a UUID; the first 8 characters are still useful for cross-
+ * referencing within an audit window without giving an entire CloudWatch
+ * Logs reader the ability to enumerate every user's recordings. sessionId
+ * is left intact (random UUID, not PHI on its own).
+ */
+function redactUserId(key: string): string {
+  const slash = key.indexOf("/");
+  if (slash <= 0) return key;
+  const userId = key.substring(0, slash);
+  const rest = key.substring(slash);
+  return `${userId.substring(0, 8)}…${rest}`;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -201,9 +219,9 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         log("info", "processing object", {
           messageId: sqsRecord.messageId,
           bucket,
-          key,
+          key: redactUserId(key),
           sessionId,
-          userId: parsed.userId,
+          userIdPrefix: parsed.userId.substring(0, 8),
         });
 
         const audioUrl = await presignS3Get(bucket, key);
@@ -217,10 +235,11 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         log("info", "pipeline completed", { sessionId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        const redactedKey = redactUserId(key);
         log("error", "pipeline failed", {
           messageId: sqsRecord.messageId,
           bucket,
-          key,
+          key: redactedKey,
           sessionId,
           err: message,
         });
@@ -234,7 +253,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
               step: "pipeline",
               status: "failed",
               error_message: message,
-              metadata: { bucket, key, messageId: sqsRecord.messageId },
+              metadata: { bucket, key: redactedKey, messageId: sqsRecord.messageId },
             });
           } catch (logErr) {
             log("error", "failed to persist failure state", {

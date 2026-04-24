@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { isValidUUID } from "@/lib/uuid";
 import { updatePreceptor, deletePreceptor } from "@/lib/db/queries";
+import { recordAudit } from "@/lib/db/audit";
 
 /**
  * Postgres unique/fk error codes we care about here.
@@ -46,14 +47,39 @@ export async function PATCH(
       // caller isn't the owner (including the shared-row case where
       // created_by_user_id IS NULL). Return 403 so the ownership boundary
       // is explicit — 404 would mask authz failures behind "not found".
+      await recordAudit({
+        actorUserId: session.user.id,
+        action: "preceptor.update",
+        targetType: "preceptor",
+        targetId: id,
+        result: "forbidden",
+        request,
+      });
       return Response.json(
         { error: "Forbidden: you don't own this preceptor" },
         { status: 403 },
       );
     }
+    await recordAudit({
+      actorUserId: session.user.id,
+      action: "preceptor.update",
+      targetType: "preceptor",
+      targetId: id,
+      result: "ok",
+      request,
+    });
     return Response.json({ preceptor: updated });
   } catch (err) {
     if (isPgError(err) && err.code === PG_FK_VIOLATION) {
+      await recordAudit({
+        actorUserId: session.user.id,
+        action: "preceptor.update",
+        targetType: "preceptor",
+        targetId: id,
+        result: "error",
+        request,
+        metadata: { reason: "fk_violation" },
+      });
       return Response.json(
         {
           error:
@@ -71,7 +97,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
@@ -87,14 +113,39 @@ export async function DELETE(
     const affected = await deletePreceptor(id, session.user.id);
     if (affected === 0) {
       // Same reasoning as PATCH — surface ownership failures as 403.
+      await recordAudit({
+        actorUserId: session.user.id,
+        action: "preceptor.delete",
+        targetType: "preceptor",
+        targetId: id,
+        result: "forbidden",
+        request,
+      });
       return Response.json(
         { error: "Forbidden: you don't own this preceptor" },
         { status: 403 },
       );
     }
+    await recordAudit({
+      actorUserId: session.user.id,
+      action: "preceptor.delete",
+      targetType: "preceptor",
+      targetId: id,
+      result: "ok",
+      request,
+    });
     return new Response(null, { status: 204 });
   } catch (err) {
     if (isPgError(err) && err.code === PG_FK_VIOLATION) {
+      await recordAudit({
+        actorUserId: session.user.id,
+        action: "preceptor.delete",
+        targetType: "preceptor",
+        targetId: id,
+        result: "error",
+        request,
+        metadata: { reason: "fk_violation" },
+      });
       return Response.json(
         {
           error:

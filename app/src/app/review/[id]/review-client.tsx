@@ -185,11 +185,14 @@ function ProcessingView({
 
   const currentIdx = steps.findIndex((s) => s.key === pipelineStep);
 
+  // "Still processing" is async work in progress, not a warning. Use
+  // --processing (blue) so it reads as activity, not a problem. The
+  // stuck-pipeline branch above keeps amber because that *is* a warning.
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-8">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-light">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-processing-bg">
         <svg
-          className="h-8 w-8 animate-spin text-accent"
+          className="h-8 w-8 animate-spin text-processing"
           viewBox="0 0 24 24"
           fill="none"
         >
@@ -222,7 +225,7 @@ function ProcessingView({
                   isDone
                     ? "bg-success text-white"
                     : isActive
-                      ? "bg-accent text-white"
+                      ? "bg-processing text-white"
                       : "bg-border-light text-subtle"
                 }`}
               >
@@ -678,7 +681,7 @@ function AudioPlayerBar({ audioUrl }: { audioUrl: string }) {
         <button
           type="button"
           onClick={togglePlay}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover"
           aria-label={playing ? "Pause" : "Play"}
         >
           {playing ? (

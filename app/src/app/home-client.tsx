@@ -23,8 +23,10 @@ interface FeedbackSession {
 function StatusBadge({ status }: { status: SessionStatus }) {
   const config: Record<SessionStatus, { label: string; className: string }> = {
     created: { label: "Created", className: "bg-[var(--border-light)] text-subtle" },
-    uploading: { label: "Uploading", className: "bg-warning-bg text-warning" },
-    processing: { label: "Processing", className: "bg-warning-bg text-warning" },
+    // Async work in progress → --processing (blue), distinct from --warning
+    // (amber) which is reserved for genuine warnings.
+    uploading: { label: "Uploading", className: "bg-processing-bg text-processing" },
+    processing: { label: "Processing", className: "bg-processing-bg text-processing" },
     ready: { label: "Ready", className: "bg-success-bg text-success" },
     exported: { label: "Exported", className: "bg-[var(--border-light)] text-subtle" },
     processing_failed: { label: "Failed", className: "bg-error-bg text-error" },
@@ -67,19 +69,36 @@ function WeeklyNudge({ sessions }: { sessions: FeedbackSession[] }) {
   const onTrack = thisWeek >= WEEKLY_GOAL;
   const label = thisWeek === 1 ? "Coaching Note" : "Coaching Notes";
 
+  // On-track collapses to a single compact chip (~32px). The full card
+  // (number badge + CTA) only renders when the resident is behind cadence
+  // and there's a reason to ask for action.
+  if (onTrack) {
+    return (
+      <div className="mx-6 mb-4 inline-flex items-center gap-2 self-start rounded-full bg-success-bg px-3 py-1.5 text-xs font-medium text-success">
+        <svg
+          aria-hidden="true"
+          className="h-3.5 w-3.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m4.5 12.75 6 6 9-13.5"
+          />
+        </svg>
+        <span>
+          {thisWeek} {label} this week
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`mx-6 mb-4 flex items-center gap-4 rounded-[var(--radius-lg)] border p-4 ${
-        onTrack
-          ? "border-success/40 bg-success-bg"
-          : "border-warning/40 bg-warning-bg"
-      }`}
-    >
-      <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-          onTrack ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
-        }`}
-      >
+    <div className="mx-6 mb-4 flex items-center gap-4 rounded-[var(--radius-lg)] border border-warning/40 bg-warning-bg p-4">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
         <span className="font-[family-name:var(--font-display)] text-2xl leading-none">
           {thisWeek}
         </span>
@@ -89,19 +108,15 @@ function WeeklyNudge({ sessions }: { sessions: FeedbackSession[] }) {
           {label} this week
         </p>
         <p className="mt-0.5 text-xs text-muted">
-          {onTrack
-            ? `On track — weekly goal: ${WEEKLY_GOAL}+`
-            : `Weekly goal: ${WEEKLY_GOAL}+ · log one to stay on track`}
+          {`Weekly goal: ${WEEKLY_GOAL}+ · log one to stay on track`}
         </p>
       </div>
-      {!onTrack && (
-        <Link
-          href="/record"
-          className="shrink-0 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
-        >
-          Log one
-        </Link>
-      )}
+      <Link
+        href="/record"
+        className="shrink-0 rounded-[var(--radius-md)] bg-accent px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+      >
+        Log one
+      </Link>
     </div>
   );
 }
@@ -181,14 +196,14 @@ function SessionCard({ session }: { session: FeedbackSession }) {
           {session.rotation?.name && (
             <>
               <span className="truncate">{session.rotation.name}</span>
-              <span aria-hidden="true" className="text-subtle">·</span>
+              <span aria-hidden="true" className="text-subtle-decorative">·</span>
             </>
           )}
           <span>{formatDate(session.created_at)}</span>
         </div>
       </div>
       <StatusBadge status={session.status} />
-      <svg className="h-4 w-4 shrink-0 text-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+      <svg className="h-4 w-4 shrink-0 text-subtle-decorative" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
       </svg>
     </Link>

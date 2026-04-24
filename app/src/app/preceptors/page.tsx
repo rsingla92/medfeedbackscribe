@@ -219,7 +219,7 @@ export default function PreceptorsPage() {
                   <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
                   <div className="flex items-center gap-2 text-xs text-muted truncate">
                     {p.specialty && <span>{p.specialty}</span>}
-                    {p.specialty && p.email && <span className="text-subtle">·</span>}
+                    {p.specialty && p.email && <span className="text-subtle-decorative">·</span>}
                     {p.email && <span className="truncate">{p.email}</span>}
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export default function PreceptorsPage() {
                     <button
                       type="button"
                       onClick={() => openEditForm(p)}
-                      className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-muted hover:text-foreground hover:bg-border-light transition-colors"
+                      className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-muted hover:text-foreground hover:bg-border-light transition-colors"
                       aria-label={`Edit ${p.name}`}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -243,7 +243,7 @@ export default function PreceptorsPage() {
                     <button
                       type="button"
                       onClick={() => setDeletingId(p.id)}
-                      className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-muted hover:text-error hover:bg-error-bg transition-colors"
+                      className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-muted hover:text-error hover:bg-error-bg transition-colors"
                       aria-label={`Delete ${p.name}`}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

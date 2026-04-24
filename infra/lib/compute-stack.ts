@@ -10,12 +10,23 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 import * as sources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as apprunner from 'aws-cdk-lib/aws-apprunner';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
 import { DebriefDataStack } from './data-stack';
 
 interface DebriefComputeStackProps extends cdk.StackProps {
   dataStack: DebriefDataStack;
+  /**
+   * GitHub repo in `org/repo` form. Used as the `sub` claim filter on the
+   * GitHub Actions OIDC deploy role. MUST be explicit — wildcards or the
+   * literal `REPO_PLACEHOLDER` will cause synth to fail. Pass via
+   * `infra/bin/debrief.ts` (typically from the GITHUB_REPO env var).
+   */
+  githubRepo?: string;
 }
+
+const SES_DOMAIN = 'debrief.whitecoatprep.com';
+const SES_FROM_EMAIL = `noreply@${SES_DOMAIN}`;
 
 /**
  * Debrief compute-layer stack.
@@ -30,8 +41,28 @@ export class DebriefComputeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: DebriefComputeStackProps) {
     super(scope, id, props);
 
+    // ====================================================================
+    // 0. Synth-time guard: GitHub repo identity must be explicit.
+    //    Wildcards in the OIDC `sub` claim would let any GitHub repo in the
+    //    world assume the deploy role. Refuse to synth without a real value.
+    // ====================================================================
+    const githubRepo = props?.githubRepo ?? 'REPO_PLACEHOLDER';
+    if (githubRepo === 'REPO_PLACEHOLDER' || githubRepo.includes('*')) {
+      throw new Error(
+        'DebriefComputeStack: githubRepo must be explicit like "org/repo". ' +
+        'Pass it in via stack props (infra/bin/debrief.ts) — wildcards and the ' +
+        'placeholder are refused to prevent unauthorized GitHub repos from ' +
+        'assuming the deploy role.'
+      );
+    }
+
     const { dataStack } = props;
     const { kmsKey, vpc, database, recordingsBucket, dbSecurityGroup } = dataStack;
+
+    // SES identity ARN — scope IAM grants down from `Resource: '*'` to the
+    // single domain identity we own. `ses:FromAddress` condition further
+    // restricts the From address (defense in depth).
+    const sesIdentityArn = `arn:aws:ses:${this.region}:${this.account}:identity/${SES_DOMAIN}`;
 
     // ====================================================================
     // 1. SQS queues (main + DLQ), KMS-encrypted.
@@ -136,12 +167,17 @@ export class DebriefComputeStack extends cdk.Stack {
     kmsKey.grantDecrypt(pipelineFn);
     queue.grantConsumeMessages(pipelineFn);
     // SES send permissions (for post-processing email notifications).
+    // Scoped to our domain identity ARN; FromAddress condition pins the
+    // sender. Was Resource: '*' previously.
     pipelineFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        resources: ['*'],
+        actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendBulkEmail'],
+        resources: [sesIdentityArn],
         conditions: {
-          StringEquals: { 'aws:SourceAccount': this.account },
+          StringEquals: {
+            'aws:SourceAccount': this.account,
+            'ses:FromAddress': SES_FROM_EMAIL,
+          },
         },
       }),
     );
@@ -210,18 +246,20 @@ export class DebriefComputeStack extends cdk.Stack {
     queue.grantSendMessages(instanceRole);
     instanceRole.addToPolicy(
       new iam.PolicyStatement({
-        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        resources: ['*'],
-        conditions: { StringEquals: { 'aws:SourceAccount': this.account } },
+        actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendBulkEmail'],
+        resources: [sesIdentityArn],
+        conditions: {
+          StringEquals: {
+            'aws:SourceAccount': this.account,
+            'ses:FromAddress': SES_FROM_EMAIL,
+          },
+        },
       }),
     );
-    // Bedrock access (future — kept broad for prototype, tighten later).
-    instanceRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: ['*'],
-      }),
-    );
+    // Bedrock grant intentionally removed: the pipeline runs on Vertex AI
+    // (Google) in northamerica-northeast1, not Bedrock. If we ever flip to
+    // Bedrock for any model, re-add a scoped grant naming the specific model
+    // ARN — never `Resource: '*'`.
 
     // Access role — what App Runner uses to pull the ECR image.
     const accessRole = new iam.Role(this, 'AppRunnerAccessRole', {
@@ -289,6 +327,70 @@ export class DebriefComputeStack extends cdk.Stack {
     appRunnerService.node.addDependency(ecrRepo);
 
     // ====================================================================
+    // 5b. WAFv2 — REGIONAL Web ACL associated with the App Runner service.
+    //     Two rate-based rules: a global per-IP ceiling, and a stricter
+    //     scope-down rule for the magic-link auth endpoint to slow down
+    //     credential-stuffing / enumeration. AWS WAF rate limits are evaluated
+    //     over a rolling 5-minute window.
+    // ====================================================================
+    const wafAcl = new wafv2.CfnWebACL(this, 'DebriefWebAcl', {
+      scope: 'REGIONAL',
+      defaultAction: { allow: {} },
+      visibilityConfig: {
+        cloudWatchMetricsEnabled: true,
+        metricName: 'DebriefWebAcl',
+        sampledRequestsEnabled: true,
+      },
+      rules: [
+        {
+          name: 'RateLimitPerIp',
+          priority: 1,
+          statement: {
+            rateBasedStatement: { limit: 1000, aggregateKeyType: 'IP' },
+          },
+          action: { block: {} },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'RateLimit',
+            sampledRequestsEnabled: true,
+          },
+        },
+        {
+          name: 'MagicLinkRateLimit',
+          priority: 2,
+          statement: {
+            rateBasedStatement: {
+              limit: 100,
+              aggregateKeyType: 'IP',
+              scopeDownStatement: {
+                byteMatchStatement: {
+                  fieldToMatch: { uriPath: {} },
+                  positionalConstraint: 'STARTS_WITH',
+                  searchString: '/api/auth/signin/email',
+                  textTransformations: [{ priority: 0, type: 'NONE' }],
+                },
+              },
+            },
+          },
+          action: { block: {} },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: 'MagicLinkRateLimit',
+            sampledRequestsEnabled: true,
+          },
+        },
+      ],
+    });
+
+    const wafAssociation = new wafv2.CfnWebACLAssociation(this, 'DebriefWebAclAssoc', {
+      // App Runner exposes attrServiceArn for WAF association — confirmed
+      // supported by AWS::WAFv2::WebACLAssociation since Apr 2023.
+      resourceArn: appRunnerService.attrServiceArn,
+      webAclArn: wafAcl.attrArn,
+    });
+    wafAssociation.node.addDependency(appRunnerService);
+
+    // ====================================================================
     // 6. GitHub Actions OIDC deploy role.
     // ====================================================================
     // The OIDC provider is account-wide. Check if it already exists (shared
@@ -300,9 +402,8 @@ export class DebriefComputeStack extends cdk.Stack {
       // Thumbprints managed by AWS — empty array is accepted for GitHub.
     });
 
-    // REPO_PLACEHOLDER — replace with e.g. 'rsingla92/debrief-backend' before deploy.
-    const githubRepo = 'REPO_PLACEHOLDER';
-
+    // `githubRepo` is provided via stack props and validated at the top of
+    // this constructor — REPO_PLACEHOLDER and wildcards throw at synth.
     const githubDeployRole = new iam.Role(this, 'GitHubDeployRole', {
       roleName: 'debrief-github-deploy',
       description: 'Debrief CI/CD — assumed by GitHub Actions via OIDC',

@@ -8,20 +8,28 @@ import {
   getProfile,
 } from "@/lib/db/queries";
 import { sql } from "@/lib/db/client";
+import { recordAudit } from "@/lib/db/audit";
 
 // ── CSV Helpers ─────────────────────────────────────────────────────────────────
 
 /** Escape a value for CSV: wrap in quotes if it contains commas, quotes, or newlines */
 function csvEscape(value: string): string {
-  if (
-    value.includes(",") ||
-    value.includes('"') ||
-    value.includes("\n") ||
-    value.includes("\r")
-  ) {
-    return `"${value.replace(/"/g, '""')}"`;
+  let s = value;
+  // Excel / Sheets treat leading =, +, -, @, tab, CR as formulas. Prepend a
+  // single quote to neutralize. LLM output or preceptor-supplied narrative can
+  // contain these.
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = "'" + s;
   }
-  return value;
+  if (
+    s.includes(",") ||
+    s.includes('"') ||
+    s.includes("\n") ||
+    s.includes("\r")
+  ) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
 }
 
 /** One45 CanMEDS roles in standard order */
@@ -38,7 +46,7 @@ const CANMEDS_ROLES = [
 // ── Route Handler ───────────────────────────────────────────────────────────────
 
 export async function POST(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -198,6 +206,15 @@ export async function POST(
       );
       throw new Error("Failed to update session status");
     }
+
+    await recordAudit({
+      actorUserId: userId,
+      action: "session.export_csv",
+      targetType: "recording_session",
+      targetId: sessionId,
+      result: "ok",
+      request,
+    });
 
     return new Response(csv, {
       status: 200,

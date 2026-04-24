@@ -37,12 +37,13 @@
 - **Surface:** #FFFFFF — cards, modals, input backgrounds
 - **Text primary:** #1C1917 (Stone-900) — warm near-black
 - **Text muted:** #78716C (Stone-500) — secondary text, labels
-- **Text subtle:** #A8A29E (Stone-400) — timestamps, placeholders
+- **Text subtle:** #78716C (Stone-500) — timestamps, placeholders, helper labels. Same value as muted because the original Stone-400 (#A8A29E) was 2.4:1 on background and failed WCAG AA. The lighter #A8A29E is preserved as `--text-subtle-decorative` for non-text uses only (dot indicators, dividers).
 - **Border:** #E7E5E4 (Stone-200) — card borders, dividers
 - **Border light:** #F5F5F4 (Stone-100) — subtle separators within cards
 - **Semantic:**
   - Success: #16A34A (bg: #F0FDF4)
-  - Warning: #D97706 (bg: #FFFBEB) — same as accent, contextual meaning
+  - Warning: #D97706 (bg: #FFFBEB) — same as accent, contextual meaning. Reserved for *genuine* warnings: low-confidence fields, stuck pipeline, unsaved-changes banner.
+  - Processing: #2563EB (bg: #DBEAFE) — async work in progress (uploading, transcribing, extracting). Visually distinct from warning amber so a resident can tell "still processing" from "your edits didn't save."
   - Error: #DC2626 (bg: #FEF2F2)
   - Info: #2563EB (bg: #EFF6FF)
 - **Dark mode:** Invert surfaces (bg: #1C1917, surface: #292524). Reduce accent saturation 10%. Text flips to #FAFAF9. Use CSS custom properties for seamless toggle.
@@ -83,7 +84,7 @@ Compact card (surface background, 1px border, lg radius). Left: preceptor name (
 
 ### Status Badges
 Pill shape (full radius). Colored dot (6px) + label text (12px, 500 weight).
-- Processing: amber on warm-yellow bg (#FFFBEB)
+- Processing: blue on light-blue bg (#DBEAFE) — uses `--processing` token
 - Ready: green on green bg (#F0FDF4)
 - Exported: muted on stone bg (#F5F5F4)
 

@@ -52,68 +52,76 @@ async function main(): Promise<void> {
     max: 1,
   });
 
+  // Take an advisory lock before reading/applying migrations so two concurrent
+  // migrators don't race each other into duplicate inserts or half-applied DDL.
+  const LOCK_KEY = 8675309; // stable, arbitrary
+  await sql`select pg_advisory_lock(${LOCK_KEY})`;
   try {
-    // Ensure tracking table exists.
-    await sql`
-      create table if not exists _migrations (
-        filename text primary key,
-        hash text not null,
-        applied_at timestamptz not null default now()
-      )
-    `;
+    try {
+      // Ensure tracking table exists.
+      await sql`
+        create table if not exists _migrations (
+          filename text primary key,
+          hash text not null,
+          applied_at timestamptz not null default now()
+        )
+      `;
 
-    const entries = (await readdir(MIGRATIONS_DIR))
-      .filter((f) => f.endsWith(".sql"))
-      .sort();
+      const entries = (await readdir(MIGRATIONS_DIR))
+        .filter((f) => f.endsWith(".sql"))
+        .sort();
 
-    if (entries.length === 0) {
-      console.log("No migrations found.");
-      return;
-    }
-
-    const applied = await sql<{ filename: string; hash: string }[]>`
-      select filename, hash from _migrations
-    `;
-    const appliedMap = new Map(applied.map((r) => [r.filename, r.hash]));
-
-    let ranCount = 0;
-    for (const filename of entries) {
-      const path = join(MIGRATIONS_DIR, filename);
-      const contents = await readFile(path, "utf8");
-      const hash = createHash("sha256").update(contents).digest("hex");
-
-      const existing = appliedMap.get(filename);
-      if (existing) {
-        if (existing !== hash) {
-          console.error(
-            `DRIFT: ${filename} has been modified after it was applied.\n` +
-              `  expected hash ${existing.slice(0, 12)}…\n` +
-              `  actual hash   ${hash.slice(0, 12)}…\n` +
-              `Create a new migration file instead of editing this one.`
-          );
-          process.exit(2);
-        }
-        continue;
+      if (entries.length === 0) {
+        console.log("No migrations found.");
+        return;
       }
 
-      console.log(`Running ${filename}…`);
-      await sql.begin(async (tx) => {
-        // Run the whole file as a single statement. postgres.js's tagged
-        // template doesn't support "run this arbitrary string", so use
-        // sql.unsafe with a static interpolation.
-        await tx.unsafe(contents);
-        await tx`
-          insert into _migrations (filename, hash) values (${filename}, ${hash})
-        `;
-      });
-      ranCount += 1;
-    }
+      const applied = await sql<{ filename: string; hash: string }[]>`
+        select filename, hash from _migrations
+      `;
+      const appliedMap = new Map(applied.map((r) => [r.filename, r.hash]));
 
-    console.log(
-      ranCount === 0
-        ? "All migrations already applied."
-        : `Applied ${ranCount} migration(s).`
-    );
+      let ranCount = 0;
+      for (const filename of entries) {
+        const path = join(MIGRATIONS_DIR, filename);
+        const contents = await readFile(path, "utf8");
+        const hash = createHash("sha256").update(contents).digest("hex");
+
+        const existing = appliedMap.get(filename);
+        if (existing) {
+          if (existing !== hash) {
+            console.error(
+              `DRIFT: ${filename} has been modified after it was applied.\n` +
+                `  expected hash ${existing.slice(0, 12)}…\n` +
+                `  actual hash   ${hash.slice(0, 12)}…\n` +
+                `Create a new migration file instead of editing this one.`
+            );
+            process.exit(2);
+          }
+          continue;
+        }
+
+        console.log(`Running ${filename}…`);
+        await sql.begin(async (tx) => {
+          // Run the whole file as a single statement. postgres.js's tagged
+          // template doesn't support "run this arbitrary string", so use
+          // sql.unsafe with a static interpolation.
+          await tx.unsafe(contents);
+          await tx`
+            insert into _migrations (filename, hash) values (${filename}, ${hash})
+          `;
+        });
+        ranCount += 1;
+      }
+
+      console.log(
+        ranCount === 0
+          ? "All migrations already applied."
+          : `Applied ${ranCount} migration(s).`
+      );
+    } finally {
+      await sql`select pg_advisory_unlock(${LOCK_KEY})`;
+    }
   } finally {
     await sql.end({ timeout: 5 });
   }

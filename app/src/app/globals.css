@@ -15,7 +15,11 @@
   /* Text */
   --text: #1C1917;
   --text-muted: #78716C;
-  --text-subtle: #A8A29E;
+  /* --text-subtle is the *text* token. Darkened from #A8A29E (2.4:1 on bg)
+   * to #78716C so body/large text meets WCAG AA. For decorative non-text
+   * uses (dot indicators, dividers) reach for --text-subtle-decorative. */
+  --text-subtle: #78716C;
+  --text-subtle-decorative: #A8A29E;
 
   /* Borders */
   --border: #E7E5E4;
@@ -24,12 +28,21 @@
   /* Semantic */
   --success: #16A34A;
   --success-bg: #F0FDF4;
+  /* --warning is reserved for *genuine* warnings: low-confidence fields,
+   * stuck pipeline, unsaved-changes banner. For "work in progress"
+   * (uploading, processing) use --processing — see below. */
   --warning: #D97706;
   --warning-bg: #FFFBEB;
   --error: #DC2626;
   --error-bg: #FEF2F2;
   --info: #2563EB;
   --info-bg: #EFF6FF;
+  /* Processing — async work in progress. Visually distinct from --warning
+   * (amber) so a resident can tell "still uploading" from "your edits
+   * didn't save" / "low confidence". Blue conveys neutral activity. */
+  --processing: #2563EB;
+  --processing-bg: #DBEAFE;
+  --processing-light: #EFF6FF;
 
   /* Radius */
   --radius-sm: 4px;
@@ -43,7 +56,10 @@
   --surface: #292524;
   --text: #FAFAF9;
   --text-muted: #A8A29E;
-  --text-subtle: #78716C;
+  /* In dark mode the muted tone (#A8A29E) already meets AA on #1C1917,
+   * so subtle/decorative can stay lighter without failing contrast. */
+  --text-subtle: #A8A29E;
+  --text-subtle-decorative: #78716C;
   --border: #44403C;
   --border-light: #292524;
   --accent-light: #451A03;
@@ -51,6 +67,8 @@
   --warning-bg: #451A03;
   --error-bg: #450A0A;
   --info-bg: #1E3A5F;
+  --processing-bg: #1E3A5F;
+  --processing-light: #1E3A5F;
 }
 
 @theme inline {
@@ -62,6 +80,7 @@
   --color-surface: var(--surface);
   --color-muted: var(--text-muted);
   --color-subtle: var(--text-subtle);
+  --color-subtle-decorative: var(--text-subtle-decorative);
   --color-border: var(--border);
   --color-border-light: var(--border-light);
   --color-success: var(--success);
@@ -72,6 +91,9 @@
   --color-error-bg: var(--error-bg);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
+  --color-processing: var(--processing);
+  --color-processing-bg: var(--processing-bg);
+  --color-processing-light: var(--processing-light);
   --font-display: "Instrument Serif", Georgia, serif;
   --font-body: "DM Sans", system-ui, sans-serif;
   --font-mono: "Geist Mono", "SF Mono", "Fira Code", monospace;

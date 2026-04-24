@@ -121,6 +121,13 @@ export async function PUT(request: NextRequest) {
   ) {
     return Response.json({ error: "Invalid input" }, { status: 400 });
   }
+  const expectedPrefix = `${session.user.id}/${body.session_id}.`;
+  if (!body.audio_path.startsWith(expectedPrefix)) {
+    return Response.json(
+      { error: "audio_path must belong to this session and user" },
+      { status: 400 },
+    );
+  }
   const recording = await createRecording({
     sessionId: body.session_id,
     userId: session.user.id,

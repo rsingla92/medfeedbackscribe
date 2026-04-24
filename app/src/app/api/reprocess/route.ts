@@ -9,6 +9,7 @@ import {
   updateRecordingSessionStatus,
   clearTranscriptClean,
 } from "@/lib/db/queries";
+import { recordAudit } from "@/lib/db/audit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +45,15 @@ export async function POST(request: NextRequest) {
 
     const allowedStatuses = ["processing_failed", "processing"];
     if (!allowedStatuses.includes(rs.status)) {
+      await recordAudit({
+        actorUserId: userId,
+        action: "session.reprocess",
+        targetType: "recording_session",
+        targetId: sessionId,
+        result: "error",
+        request,
+        metadata: { reason: "conflict" },
+      });
       return Response.json(
         {
           error: `Session cannot be reprocessed in status '${rs.status}'. Only processing_failed or processing sessions may be retried.`,
@@ -54,6 +64,15 @@ export async function POST(request: NextRequest) {
 
     const updatedAt = new Date(rs.updated_at).getTime();
     if (updatedAt > Date.now() - 5 * 60 * 1000) {
+      await recordAudit({
+        actorUserId: userId,
+        action: "session.reprocess",
+        targetType: "recording_session",
+        targetId: sessionId,
+        result: "error",
+        request,
+        metadata: { reason: "conflict" },
+      });
       return Response.json(
         {
           error:
@@ -103,6 +122,15 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    await recordAudit({
+      actorUserId: userId,
+      action: "session.reprocess",
+      targetType: "recording_session",
+      targetId: sessionId,
+      result: "ok",
+      request,
+    });
 
     return Response.json({ status: "reprocessing" }, { status: 202 });
   } catch (error) {

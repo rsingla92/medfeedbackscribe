@@ -18,10 +18,16 @@ const dataStack = new DebriefDataStack(app, 'DebriefDataStack', {
   description: 'Debrief persistent resources: KMS, VPC, RDS, S3, CloudTrail, SES. PHIPA.',
 });
 
+// GitHub repo identity for the OIDC deploy role. Set GITHUB_REPO=org/repo in
+// the deploy environment — left undefined here so DebriefComputeStack throws
+// at synth time rather than silently deploying with REPO_PLACEHOLDER.
+const githubRepo = process.env.GITHUB_REPO;
+
 const computeStack = new DebriefComputeStack(app, 'DebriefComputeStack', {
   env,
   description: 'Debrief stateless resources: SQS, Lambda worker, App Runner, ECR, GH OIDC.',
   dataStack,
+  githubRepo,
 });
 
 // compute depends on data (KMS key, VPC, RDS secret, buckets).
