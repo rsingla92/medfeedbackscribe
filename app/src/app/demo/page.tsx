@@ -251,13 +251,39 @@ export default function DemoPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-6 py-8">
+        {/* Back-to-home link */}
+        <a
+          href="/"
+          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground transition-colors"
+        >
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+          Back to home
+        </a>
+
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-[family-name:var(--font-display)] text-foreground">Debrief</h1>
+            <h1 className="text-3xl font-[family-name:var(--font-display)] text-foreground">
+              Debrief
+            </h1>
             <p className="text-sm text-muted">Demo Mode</p>
           </div>
-          <span className="rounded-full bg-warning-bg px-3 py-1 text-xs font-medium text-warning">DEMO</span>
+          <span className="rounded-full border border-warning/40 bg-warning-bg px-3 py-1 text-xs font-medium text-warning uppercase tracking-wider">
+            Demo · simulated data
+          </span>
         </div>
 
         {/* ─── PICK ROTATION ─── */}
@@ -525,14 +551,56 @@ export default function DemoPage() {
               </div>
             ))}
 
-            <div className="flex gap-3">
-              <button type="button" className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground">Edit</button>
-              <button type="button" className="flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white">Export as PDF</button>
+            <div className="rounded-lg border border-dashed border-border bg-surface p-3 text-xs text-muted text-center">
+              Demo only — buttons below are illustrative. The real app at{" "}
+              <a href="/auth" className="font-medium text-accent">
+                /auth
+              </a>{" "}
+              actually edits, downloads, and emails the PDF.
             </div>
 
-            <button type="button" onClick={resetAll} className="w-full text-center text-sm font-medium text-accent py-2">
-              Start a new session
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled
+                title="Demo — sign in to enable editing"
+                className="flex-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm font-semibold text-muted cursor-not-allowed"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Demo — sign in to enable PDF export"
+                className="flex-1 rounded-lg bg-accent/40 px-4 py-3 text-sm font-semibold text-white cursor-not-allowed"
+              >
+                Export as PDF
+              </button>
+            </div>
+            <button
+              type="button"
+              disabled
+              title="Demo — sign in to email the PDF to your institutional address"
+              className="w-full rounded-lg border border-dashed border-border bg-surface px-4 py-3 text-sm font-medium text-muted cursor-not-allowed"
+            >
+              Email PDF to me
             </button>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={resetAll}
+                className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-border-light"
+              >
+                Start a new demo
+              </button>
+              <a
+                href="/"
+                className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background text-center hover:opacity-90"
+              >
+                Back to home
+              </a>
+            </div>
           </div>
         )}
 

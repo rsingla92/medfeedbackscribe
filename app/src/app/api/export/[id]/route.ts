@@ -10,276 +10,18 @@ import {
 import { sql } from "@/lib/db/client";
 import { recordAudit } from "@/lib/db/audit";
 import {
-  renderToBuffer,
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-} from "@react-pdf/renderer";
-import { createElement } from "react";
+  renderPdfBuffer,
+  buildExportFilename,
+  type AssessmentData,
+  type SessionMeta,
+} from "@/lib/exports/pdf";
 
-// ---------- PDF Styles ----------
-const styles = StyleSheet.create({
-  page: {
-    padding: 40,
-    fontSize: 11,
-    fontFamily: "Helvetica",
-    color: "#1C1917",
-    lineHeight: 1.5,
-  },
-  header: {
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E7E5E4",
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 8,
-    color: "#1C1917",
-  },
-  headerMeta: {
-    fontSize: 10,
-    color: "#78716C",
-    marginBottom: 2,
-  },
-  assessmentBlock: {
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E7E5E4",
-  },
-  assessmentTitle: {
-    fontSize: 14,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 10,
-    color: "#D97706",
-  },
-  sectionLabel: {
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-    color: "#78716C",
-    marginBottom: 2,
-    marginTop: 8,
-    textTransform: "uppercase" as const,
-  },
-  sectionValue: {
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  tag: {
-    fontSize: 9,
-    backgroundColor: "#FEF3C7",
-    color: "#92400E",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  fieldRow: {
-    marginBottom: 4,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-    color: "#78716C",
-  },
-  fieldValue: {
-    fontSize: 11,
-  },
-  footer: {
-    position: "absolute",
-    bottom: 30,
-    left: 40,
-    right: 40,
-    fontSize: 8,
-    color: "#A8A29E",
-    textAlign: "center",
-  },
-});
+// PDF builder + styles live in @/lib/exports/pdf so the email-PDF route
+// (api/export/[id]/email) can render the same document.
 
-// ---------- PDF Document Builder ----------
-interface AssessmentData {
-  output_index: number;
-  structured_fields: Record<string, unknown>;
-  competency_tags: string[];
-  narrative_summary: string;
-  coaching_did_well: string | null;
-  coaching_consider: string | null;
-}
-
-interface SessionMeta {
-  formName: string;
-  preceptorEmail: string | null;
-  residentEmail: string;
-  rotation: string | null;
-  date: string;
-}
-
-function buildPdfDocument(
-  meta: SessionMeta,
-  assessments: AssessmentData[],
-  templateFields: Record<string, { label?: string }>,
-) {
-  return createElement(
-    Document,
-    null,
-    createElement(
-      Page,
-      { size: "LETTER", style: styles.page },
-      // Header
-      createElement(
-        View,
-        { style: styles.header },
-        createElement(Text, { style: styles.title }, meta.formName),
-        meta.preceptorEmail &&
-          createElement(
-            Text,
-            { style: styles.headerMeta },
-            `Preceptor: ${meta.preceptorEmail}`
-          ),
-        createElement(
-          Text,
-          { style: styles.headerMeta },
-          `Resident: ${meta.residentEmail}`
-        ),
-        meta.rotation &&
-          createElement(
-            Text,
-            { style: styles.headerMeta },
-            `Rotation: ${meta.rotation}`
-          ),
-        createElement(
-          Text,
-          { style: styles.headerMeta },
-          `Date: ${meta.date}`
-        )
-      ),
-      // Assessment blocks
-      ...assessments.map((assessment) =>
-        createElement(
-          View,
-          { key: String(assessment.output_index), style: styles.assessmentBlock },
-          createElement(
-            Text,
-            { style: styles.assessmentTitle },
-            assessments.length > 1
-              ? `Assessment ${assessment.output_index}`
-              : "Assessment"
-          ),
-          // Structured fields
-          ...Object.entries(assessment.structured_fields)
-            .filter(([, value]) => value != null && value !== "")
-            .map(([key, value]) =>
-              createElement(
-                View,
-                { key, style: styles.fieldRow },
-                createElement(
-                  Text,
-                  { style: styles.fieldLabel },
-                  templateFields[key]?.label ?? key.replace(/_/g, " ")
-                ),
-                createElement(
-                  Text,
-                  { style: styles.fieldValue },
-                  Array.isArray(value) ? value.join(", ") : String(value)
-                )
-              )
-            ),
-          // Coaching: did well
-          assessment.coaching_did_well
-            ? createElement(
-                View,
-                null,
-                createElement(
-                  Text,
-                  { style: styles.sectionLabel },
-                  "What you did well"
-                ),
-                createElement(
-                  Text,
-                  { style: styles.sectionValue },
-                  assessment.coaching_did_well
-                )
-              )
-            : null,
-          // Coaching: consider
-          assessment.coaching_consider
-            ? createElement(
-                View,
-                null,
-                createElement(
-                  Text,
-                  { style: styles.sectionLabel },
-                  "Consider next time"
-                ),
-                createElement(
-                  Text,
-                  { style: styles.sectionValue },
-                  assessment.coaching_consider
-                )
-              )
-            : null,
-          // Competency tags
-          assessment.competency_tags.length > 0
-            ? createElement(
-                View,
-                null,
-                createElement(
-                  Text,
-                  { style: styles.sectionLabel },
-                  "Competency Tags"
-                ),
-                createElement(
-                  View,
-                  { style: styles.tagRow },
-                  ...assessment.competency_tags.map((tag) =>
-                    createElement(Text, { key: tag, style: styles.tag }, tag)
-                  )
-                )
-              )
-            : null,
-          // Narrative summary
-          assessment.narrative_summary
-            ? createElement(
-                View,
-                null,
-                createElement(
-                  Text,
-                  { style: styles.sectionLabel },
-                  "Narrative Summary"
-                ),
-                createElement(
-                  Text,
-                  { style: styles.sectionValue },
-                  assessment.narrative_summary
-                )
-              )
-            : null
-        )
-      ),
-      // Footer
-      createElement(
-        Text,
-        { style: styles.footer },
-        `Generated by Debrief on ${new Date().toLocaleDateString("en-CA")}`
-      )
-    )
-  );
-}
-
-// ---------- Route Handler ----------
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: sessionId } = await params;
@@ -319,43 +61,39 @@ export async function POST(
     const residentName =
       profile?.full_name ?? authSession.user.email ?? "Unknown";
 
+    // postgres.js returns DATE columns as JS Date objects despite our typed
+    // query interface saying `string` — cast through unknown and normalize
+    // to a YYYY-MM-DD string before handing to the PDF / filename builders.
+    const rawDate = session.date as unknown;
+    const dateString =
+      rawDate instanceof Date
+        ? rawDate.toISOString().slice(0, 10)
+        : (rawDate as string | null) ??
+          new Date(session.created_at).toLocaleDateString("en-CA");
+
     const meta: SessionMeta = {
       formName: formTemplate.name,
       preceptorEmail: session.preceptor_name ?? session.preceptor_email ?? null,
       residentEmail: residentName,
       rotation: session.rotation_name ?? null,
-      date:
-        session.date ?? new Date(session.created_at).toLocaleDateString("en-CA"),
+      date: dateString,
     };
 
-    const doc = buildPdfDocument(
+    // Render BEFORE touching DB state. If rendering throws, the session
+    // stays in `ready` and the resident can retry.
+    const pdfBuffer = await renderPdfBuffer(
       meta,
       assessments as unknown as AssessmentData[],
       (formTemplate.fields as Record<string, { label?: string }>) ?? {},
     );
 
-    // Render PDF BEFORE touching any DB state. If rendering throws, the
-    // session stays in `ready` and the resident can retry.
-    const pdfBuffer = await renderToBuffer(doc);
+    const filename = buildExportFilename(
+      formTemplate.name,
+      session.preceptor_name ?? null,
+      meta.date,
+    );
 
-    const safeName = formTemplate.name
-      .replace(/[^a-zA-Z0-9-_ ]/g, "")
-      .trim()
-      .slice(0, 50);
-    const effectiveName = safeName || "export";
-    const dateStr = new Date(session.created_at).toISOString().slice(0, 10);
-    const safePreceptor = (session.preceptor_name ?? "")
-      .replace(/[^a-zA-Z0-9-_ ]/g, "")
-      .trim()
-      .slice(0, 30);
-    const filename = safePreceptor
-      ? `${effectiveName}-${safePreceptor}-${dateStr}.pdf`
-      : `${effectiveName}-${dateStr}.pdf`;
-
-    // Atomically mark assessments exported + flip session status. If either
-    // statement fails, the transaction rolls back so we never leave the DB in
-    // a split state where assessments.exported_at is set but the session is
-    // still `ready`.
+    // Atomically mark assessments exported + flip session status.
     const updated = await sql.begin(async (tx) => {
       await tx`
         update assessments a
@@ -401,6 +139,6 @@ export async function POST(
     const message =
       error instanceof Error ? error.message : "Failed to generate PDF";
     console.error("PDF export failed:", message);
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: "PDF export failed" }, { status: 500 });
   }
 }

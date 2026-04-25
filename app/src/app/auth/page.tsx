@@ -34,7 +34,8 @@ export default function AuthPage() {
     setErrorCopy(null);
 
     const callbackUrl =
-      new URLSearchParams(window.location.search).get("callbackUrl") ?? "/";
+      new URLSearchParams(window.location.search).get("callbackUrl") ??
+      "/dashboard";
     const res = await signIn("email", { email, callbackUrl, redirect: false });
 
     if (res?.error) {
@@ -50,7 +51,8 @@ export default function AuthPage() {
 
   async function handleGoogle() {
     const callbackUrl =
-      new URLSearchParams(window.location.search).get("callbackUrl") ?? "/";
+      new URLSearchParams(window.location.search).get("callbackUrl") ??
+      "/dashboard";
     await signIn("google", { callbackUrl });
   }
 

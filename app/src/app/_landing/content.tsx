@@ -506,7 +506,11 @@ export function SiteFooter() {
 
 // Landing content
 
-export function LandingContent() {
+export function LandingContent({
+  isAuthenticated = false,
+}: {
+  isAuthenticated?: boolean;
+} = {}) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <nav
@@ -515,12 +519,21 @@ export function LandingContent() {
       >
         <DebriefWordmark href="/" />
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            href="/auth"
-            className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
-          >
-            Sign in
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
+            >
+              Go to dashboard
+            </Link>
+          ) : (
+            <Link
+              href="/auth"
+              className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
+            >
+              Sign in
+            </Link>
+          )}
           <Link
             href="/demo"
             className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover sm:px-5"

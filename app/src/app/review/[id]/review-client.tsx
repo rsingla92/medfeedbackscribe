@@ -1030,6 +1030,49 @@ export default function ReviewClient({ session }: { session: SessionData }) {
     }
   }, [session.id, hasUnsavedChanges, handleSave]);
 
+  // ── Email PDF to resident's verified address ────────────────────────────────
+
+  const [emailing, setEmailing] = useState(false);
+  const [emailedTo, setEmailedTo] = useState<string | null>(null);
+
+  const handleEmailPdf = useCallback(async () => {
+    setEmailing(true);
+    setEmailedTo(null);
+    try {
+      if (hasUnsavedChanges) {
+        const saved = await handleSave();
+        if (!saved) return;
+      }
+      const res = await fetch(`/api/export/${session.id}/email`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        if (res.status === 412) {
+          setExportError({
+            title: "Verify your email first",
+            description:
+              errBody?.error ??
+              "Add a verified institutional email in your profile, then try again.",
+            action: { label: "Open profile", href: "/onboarding" },
+          });
+          return;
+        }
+        throw new Error(errBody?.error ?? `HTTP ${res.status}`);
+      }
+      const body = (await res.json()) as { sentTo?: string };
+      setSessionStatus("exported");
+      setEmailedTo(body.sentTo ?? null);
+    } catch (err) {
+      console.error("Email PDF failed:", err);
+      setExportError(exportErrorCopy("PDF"));
+    } finally {
+      setEmailing(false);
+    }
+  }, [session.id, hasUnsavedChanges, handleSave]);
+
   // ── Export CSV (One45) ────────────────────────────────────────────────────────
 
   const handleExportCsv = useCallback(async () => {
@@ -1133,14 +1176,14 @@ export default function ReviewClient({ session }: { session: SessionData }) {
               if (hasUnsavedChanges) {
                 setShowDiscardDialog(true);
               } else {
-                router.push("/");
+                router.push("/dashboard");
               }
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] text-muted hover:text-foreground hover:bg-border-light transition-colors"
-            aria-label="Go back"
+            className="inline-flex h-10 items-center gap-1.5 rounded-[var(--radius-md)] px-2 text-sm font-medium text-muted hover:text-foreground hover:bg-border-light transition-colors"
+            aria-label="Back to dashboard"
           >
             <svg
-              className="h-5 w-5"
+              className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={2}
@@ -1152,6 +1195,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
                 d="M15.75 19.5 8.25 12l7.5-7.5"
               />
             </svg>
+            <span className="hidden sm:inline">Dashboard</span>
           </button>
           <div className="flex-1 text-center min-w-0">
             <h1 className="text-lg font-[family-name:var(--font-display)] text-foreground truncate">
@@ -1289,7 +1333,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { setExportSuccess(null); router.push("/"); }}
+                    onClick={() => { setExportSuccess(null); router.push("/dashboard"); }}
                     className="rounded-[var(--radius-md)] bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-accent-hover"
                   >
                     Back to Home
@@ -1344,6 +1388,34 @@ export default function ReviewClient({ session }: { session: SessionData }) {
               </button>
             </div>
 
+            {/* Email PDF to resident's verified address */}
+            <button
+              type="button"
+              onClick={handleEmailPdf}
+              disabled={emailing}
+              className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-border-light disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <svg
+                className="h-4 w-4 text-muted"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                />
+              </svg>
+              {emailing ? "Sending..." : "Email PDF to me"}
+            </button>
+            {emailedTo && (
+              <p className="text-center text-xs text-success">
+                ✓ Sent to {emailedTo}
+              </p>
+            )}
+
             {/* One45 CSV export */}
             <button
               type="button"
@@ -1383,7 +1455,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
           onKeepEditing={() => setShowDiscardDialog(false)}
           onDiscard={() => {
             setShowDiscardDialog(false);
-            router.push("/");
+            router.push("/dashboard");
           }}
         />
       )}
