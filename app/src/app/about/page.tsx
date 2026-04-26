@@ -71,7 +71,7 @@ export default function AboutPage() {
               id="story-heading"
               className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
             >
-              From a busy night shift.
+              Why this exists.
             </h2>
 
             {/* Visual: simple quote-mark accent */}
