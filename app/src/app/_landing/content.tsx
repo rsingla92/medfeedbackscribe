@@ -712,10 +712,10 @@ export function LandingContent({
                   >
                     {feature.icon}
                   </div>
-                  <h3 className="mt-4 text-sm font-semibold text-foreground">
+                  <h3 className="mt-4 text-base font-semibold text-foreground">
                     {feature.title}
                   </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
                     {feature.body}
                   </p>
                 </li>
