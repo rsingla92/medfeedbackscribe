@@ -489,7 +489,7 @@ export default function DemoPage() {
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-subtle">
                   Transcript
                 </h3>
-                <span className="text-[11px] text-subtle">~4 min · scroll</span>
+                <span className="text-xs text-subtle">~4 min · scroll</span>
               </div>
               <div className="rounded-xl border border-border bg-surface">
                 <div className="max-h-[50vh] overflow-y-auto p-4 space-y-3 text-sm leading-relaxed">

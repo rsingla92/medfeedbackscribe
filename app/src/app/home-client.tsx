@@ -222,7 +222,7 @@ function AccountBar({ email, name, onSignOut }: { email: string; name: string; o
         onClick={() => setShowMenu(!showMenu)}
         className="flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-border-light transition-colors"
       >
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-light text-accent text-[10px] font-bold">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-light text-accent text-xs font-bold">
           {email[0].toUpperCase()}
         </div>
         <span className="max-w-[160px] truncate">{name || email}</span>

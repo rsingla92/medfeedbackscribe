@@ -908,7 +908,7 @@ export default function RecordPage() {
 
                           {others.length > 0 && (
                             <>
-                              <p className="mt-4 mb-1 text-[11px] font-medium uppercase tracking-widest text-subtle">
+                              <p className="mt-4 mb-1 text-xs font-medium uppercase tracking-widest text-subtle">
                                 Other specialties
                               </p>
                               {others.map((p) => (

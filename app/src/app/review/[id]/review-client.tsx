@@ -1209,7 +1209,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
           {/* Status badge */}
           <div className="w-10 flex justify-end">
             {sessionStatus === "exported" && (
-              <span className="inline-flex items-center rounded-full bg-success-bg px-2 py-0.5 text-[10px] font-semibold text-success uppercase">
+              <span className="inline-flex items-center rounded-full bg-success-bg px-2 py-0.5 text-xs font-semibold text-success uppercase">
                 Exported
               </span>
             )}
@@ -1280,7 +1280,7 @@ export default function ReviewClient({ session }: { session: SessionData }) {
                   <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
                     Transcript
                   </h2>
-                  <span className="text-[11px] text-subtle">scroll</span>
+                  <span className="text-xs text-subtle">scroll</span>
                 </div>
                 <div className="relative">
                   <div className="max-h-[50vh] overflow-y-auto px-5 pb-5 pt-2">

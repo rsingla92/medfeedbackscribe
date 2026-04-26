@@ -191,7 +191,7 @@ export default function AuthPage() {
                 UBC
               </span>
               UBC CWL
-              <span className="ml-1 rounded-full border border-border bg-background px-1.5 text-[10px] font-medium uppercase tracking-wider text-muted">
+              <span className="ml-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-muted">
                 Soon
               </span>
             </button>

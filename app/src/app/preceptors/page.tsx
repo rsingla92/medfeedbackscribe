@@ -253,7 +253,7 @@ export default function PreceptorsPage() {
                   </div>
                 ) : (
                   <span
-                    className="text-[10px] font-medium uppercase tracking-wider text-subtle px-2"
+                    className="text-xs font-medium uppercase tracking-wider text-subtle px-2"
                     title="Shared institutional preceptor — can't be edited"
                   >
                     Shared
