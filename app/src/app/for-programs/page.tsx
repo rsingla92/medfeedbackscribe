@@ -15,20 +15,88 @@ const problemPoints = [
   "Competency data arrives late, in batches, and rarely reflects what was actually observed in the room.",
 ];
 
+function CheckCircleIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-5 w-5"
+    >
+      <path
+        fillRule="evenodd"
+        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function BoltIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-5 w-5"
+    >
+      <path
+        fillRule="evenodd"
+        d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-5 w-5"
+    >
+      <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 0 1-1.875-1.875V8.625ZM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-5 w-5"
+    >
+      <path
+        fillRule="evenodd"
+        d="M12.516 2.17a.75.75 0 0 0-1.032 0 11.209 11.209 0 0 1-7.877 3.08.75.75 0 0 0-.722.515A12.74 12.74 0 0 0 2.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 0 0 .374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 0 0-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08Zm3.094 8.016a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 const programBenefits = [
   {
+    icon: <CheckCircleIcon />,
     title: "Higher completion",
     body: "Preceptors give feedback verbally, as they already do. Residents review, edit, and submit. The barrier to completion drops because no one is staring at a blank form.",
   },
   {
+    icon: <BoltIcon />,
     title: "Faster turnaround",
     body: "A structured assessment can be ready minutes after a shift ends, not weeks later. Timely feedback is better feedback for both the trainee and the program.",
   },
   {
+    icon: <ChartIcon />,
     title: "Richer competency data",
     body: "Verbal comments map automatically to CanMEDS roles, CCFP milestones, and Royal College Competence by Design (CBD) competencies. Aggregate data for Competence Committee reviews.",
   },
   {
+    icon: <ShieldIcon />,
     title: "Canadian data residency",
     body: "All data is stored and processed on Canadian infrastructure. No cross-border transfer, no US-based cloud storage. A practical answer to institutional procurement questions.",
   },
@@ -54,8 +122,8 @@ const rolloutSteps = [
 
 const pilotMetrics = [
   {
-    label: "Assessment completion rate",
-    body: "How many encounters resulted in a finalized assessment, before vs during the pilot.",
+    label: "# of assessments",
+    body: "How many finalized assessments the cohort produced during the block, compared to the equivalent block last year.",
   },
   {
     label: "Time from encounter to documented feedback",
@@ -83,7 +151,7 @@ export default function ForProgramsPage() {
           className="mx-auto max-w-[960px] px-6 pb-16 pt-14 sm:pb-20 sm:pt-20"
         >
           <p className="mb-4 text-xs font-medium uppercase tracking-widest text-muted">
-            For programs
+            For Programs
           </p>
           <h1
             id="hero-heading"
@@ -171,7 +239,10 @@ export default function ForProgramsPage() {
                   key={benefit.title}
                   className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
                 >
-                  <h3 className="text-base font-semibold text-foreground">
+                  <div className="text-accent" aria-hidden="true">
+                    {benefit.icon}
+                  </div>
+                  <h3 className="mt-3 text-base font-semibold text-foreground">
                     {benefit.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted">

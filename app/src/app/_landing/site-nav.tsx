@@ -6,7 +6,7 @@ import { useState } from "react";
 import { DebriefWordmark } from "./content";
 
 const NAV_LINKS = [
-  { href: "/for-programs", label: "For programs" },
+  { href: "/for-programs", label: "For Programs" },
   { href: "/about", label: "About" },
   { href: "/security", label: "Security" },
 ];

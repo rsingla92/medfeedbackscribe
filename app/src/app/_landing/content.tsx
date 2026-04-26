@@ -274,7 +274,7 @@ const steps = [
   {
     number: "02",
     title: "Transcribe and de-identify",
-    body: "The recording is transcribed and patient identifiers are removed. Competency data is extracted and mapped to your assessment form fields.",
+    body: "The recording is transcribed and patient identifiers are removed. Competency data is extracted and mapped to your assessment fields.",
     visual: <ProcessMockup />,
   },
   {
@@ -564,7 +564,7 @@ export function LandingContent({
                   href="/for-programs"
                   className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover"
                 >
-                  See For programs &rarr;
+                  See For Programs &rarr;
                 </Link>
               </p>
 
