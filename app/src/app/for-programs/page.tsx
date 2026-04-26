@@ -4,7 +4,7 @@ import { SiteFooter } from "@/app/_landing/content";
 import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
-  title: "For Programs — Debrief by Whitecoat Prep",
+  title: "For Programs — Debrief",
   description:
     "Debrief helps residency programs increase assessment completion rates, capture verbal feedback formally, and build richer competency data sets. Canadian data residency included.",
 };
@@ -170,7 +170,7 @@ export default function ForProgramsPage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
-              href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+              href="mailto:pilot@debriefmd.ca?subject=Program%20inquiry"
               className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
             >
               Request a pilot
@@ -348,10 +348,10 @@ export default function ForProgramsPage() {
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <a
-                href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+                href="mailto:pilot@debriefmd.ca?subject=Program%20inquiry"
                 className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
               >
-                pilot@whitecoatprep.com
+                pilot@debriefmd.ca
               </a>
               <Link
                 href="/security"

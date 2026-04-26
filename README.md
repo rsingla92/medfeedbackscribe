@@ -1,4 +1,4 @@
-# Debrief by Whitecoat Prep
+# Debrief
 
 **Talk first. Forms second.**
 

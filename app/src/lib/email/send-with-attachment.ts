@@ -11,7 +11,7 @@ import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 const REGION = process.env.AWS_REGION ?? "ca-central-1";
 const FROM_EMAIL =
-  process.env.SES_FROM_EMAIL ?? "noreply@debrief.whitecoatprep.com";
+  process.env.SES_FROM_EMAIL ?? "noreply@debriefmd.ca";
 
 let _client: SESv2Client | null = null;
 function client(): SESv2Client {

@@ -9,7 +9,7 @@ Manual steps you must complete before (or during) `cdk deploy`. PHIPA data — d
 - Sign the AWS Business Associate Addendum via **AWS Artifact**
   (https://console.aws.amazon.com/artifact/home).
 - Required before PHI touches the account. Likely already signed on account
-  `687591846902` for the WhiteCoatPrep project — verify in Artifact
+  `687591846902` — verify in Artifact
   → Agreements. If signed, nothing to do.
 
 ### 2. AWS CLI credentials
@@ -44,14 +44,14 @@ npm install -g aws-cdk
 cdk --version    # >= 2.170.0
 ```
 
-### 5. DNS access to `whitecoatprep.com`
+### 5. DNS access to `debriefmd.ca`
 
 You'll need to add records to the zone:
 
 - **Immediately after `cdk deploy DebriefDataStack`**: 3 DKIM CNAMEs + 1 SPF
   TXT + 1 DMARC TXT (exact values printed as CloudFormation outputs).
 - **Later** (App Runner custom domain, optional): validation + target
-  CNAMEs for `debrief.whitecoatprep.com`.
+  CNAMEs for `debriefmd.ca`.
 
 Document who controls the DNS (Route 53? Cloudflare? Registrar DNS?) and make
 sure you have access.
@@ -81,7 +81,7 @@ to assume it. Fix this before running `cdk deploy DebriefComputeStack`.
 
 The compute stack creates an IAM OIDC provider for
 `token.actions.githubusercontent.com`. IAM OIDC providers are **account-wide**
-(one per URL). If WhiteCoatPrep already created this provider in
+(one per URL). If the AWS account already has this provider in
 `687591846902`, the `cdk deploy` will fail with "EntityAlreadyExists".
 
 Check first:
@@ -109,13 +109,13 @@ After `cdk deploy DebriefDataStack`:
 
 1. Copy the `SesDkim1Name`/`Value`, `SesDkim2Name`/`Value`, `SesDkim3Name`/`Value`
    outputs.
-2. Add them as **CNAME** records to the `whitecoatprep.com` zone.
-3. Add the SPF hint as a **TXT** record on `debrief.whitecoatprep.com`.
-4. Add the DMARC hint as a **TXT** record on `_dmarc.debrief.whitecoatprep.com`.
+2. Add them as **CNAME** records to the `debriefmd.ca` zone.
+3. Add the SPF hint as a **TXT** record on `debriefmd.ca`.
+4. Add the DMARC hint as a **TXT** record on `_dmarc.debriefmd.ca`.
 5. Wait 5–30 min. Verify:
    ```sh
    aws ses get-identity-verification-attributes \
-     --identities debrief.whitecoatprep.com --region ca-central-1
+     --identities debriefmd.ca --region ca-central-1
    ```
    `VerificationStatus: Success` means you can now send.
 6. By default SES starts in **sandbox** mode — you can only send to verified

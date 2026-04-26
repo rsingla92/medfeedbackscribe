@@ -4,7 +4,7 @@ import { SiteFooter } from "@/app/_landing/content";
 import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
-  title: "Contact — Debrief by Whitecoat Prep",
+  title: "Contact — Debrief",
   description:
     "Get in touch with the Debrief team. General inquiries, pilot requests, privacy questions.",
 };
@@ -12,22 +12,22 @@ export const metadata: Metadata = {
 const contactBlocks = [
   {
     label: "General",
-    email: "hello@whitecoatprep.com",
-    href: "mailto:hello@whitecoatprep.com",
+    email: "hello@debriefmd.ca",
+    href: "mailto:hello@debriefmd.ca",
     description:
       "Product questions, feedback, anything else. This is the right place to start.",
   },
   {
     label: "Pilot inquiries",
-    email: "pilot@whitecoatprep.com",
-    href: "mailto:pilot@whitecoatprep.com?subject=Program%20inquiry",
+    email: "pilot@debriefmd.ca",
+    href: "mailto:pilot@debriefmd.ca?subject=Program%20inquiry",
     description:
       "Program directors and residency administrators: reach out here to start a conversation about a pilot. We respond within two business days.",
   },
   {
     label: "Privacy or security questions",
-    email: "privacy@whitecoatprep.com",
-    href: "mailto:privacy@whitecoatprep.com",
+    email: "privacy@debriefmd.ca",
+    href: "mailto:privacy@debriefmd.ca",
     description:
       "Questions about data handling, our subprocessors, or requesting a Data Processing Agreement. See also our security page.",
   },

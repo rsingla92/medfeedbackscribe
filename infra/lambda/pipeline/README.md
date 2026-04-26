@@ -53,8 +53,8 @@ Port-mates of the Next.js app tests live in `__tests__/`:
 | `GCP_SA_SECRET_ARN` | Lambda | Secrets Manager ARN holding the GCP service-account JSON. Cold-start code writes it to `/tmp/gcp-sa.json` and exports `GOOGLE_APPLICATION_CREDENTIALS`. |
 | `GOOGLE_APPLICATION_CREDENTIALS` | dev only | Path to a service-account JSON file. |
 | `S3_RECORDINGS_BUCKET` | - | Not read directly — the bucket comes from the S3 event. |
-| `SES_FROM_EMAIL` | no | Defaults to `Debrief <noreply@debrief.whitecoatprep.com>`. |
-| `SES_APP_URL` | no | Base URL for "open Debrief" links (default `https://debrief.whitecoatprep.com`). |
+| `SES_FROM_EMAIL` | no | Defaults to `Debrief <noreply@debriefmd.ca>`. |
+| `SES_APP_URL` | no | Base URL for "open Debrief" links (default `https://debriefmd.ca`). |
 | `PROGRAM_ADMIN_EMAIL` | no | If set, BCC-equivalent notification to this address. |
 | `AWS_REGION` / `AWS_REGION_DEBRIEF` | - | SES/S3 client region; defaults to `ca-central-1`. |
 

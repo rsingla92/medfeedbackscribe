@@ -4,7 +4,7 @@ import { SiteFooter } from "@/app/_landing/content";
 import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Debrief by Whitecoat Prep",
+  title: "Privacy Policy — Debrief",
   description: "How Debrief collects, uses, and protects your data.",
 };
 
@@ -39,8 +39,7 @@ export default function PrivacyPage() {
               1. Who we are
             </h2>
             <p className="text-muted">
-              Debrief is a product of Whitecoat Prep. We build tools for
-              medical trainees and their supervisors.
+              Debrief builds tools for medical trainees and their supervisors.
             </p>
           </section>
 

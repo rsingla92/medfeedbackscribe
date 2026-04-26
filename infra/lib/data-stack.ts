@@ -241,7 +241,7 @@ export class DebriefDataStack extends cdk.Stack {
           allowedOrigins: [
             'http://localhost:3000',
             'http://localhost:6969',
-            'https://debrief.whitecoatprep.com',
+            'https://debriefmd.ca',
             ...(props?.appRunnerUrl ? [props.appRunnerUrl] : []),
           ],
           allowedMethods: [
@@ -281,10 +281,10 @@ export class DebriefDataStack extends cdk.Stack {
     });
 
     // --------------------------------------------------------------------
-    // 7. SES domain identity — debrief.whitecoatprep.com.
+    // 7. SES domain identity — debriefmd.ca.
     //    DKIM tokens + SPF/DMARC hints emitted as outputs for manual DNS.
     // --------------------------------------------------------------------
-    const sesDomain = 'debrief.whitecoatprep.com';
+    const sesDomain = 'debriefmd.ca';
     const emailIdentity = new ses.EmailIdentity(this, 'SesDomainIdentity', {
       identity: ses.Identity.domain(sesDomain),
       // EasyDKIM is enabled by default in L2 construct; it generates 3 CNAME tokens.
@@ -306,7 +306,7 @@ export class DebriefDataStack extends cdk.Stack {
       description: 'Manual SPF record to add (TXT)',
     });
     new cdk.CfnOutput(this, 'SesDmarcHint', {
-      value: `_dmarc.${sesDomain} TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@whitecoatprep.com"`,
+      value: `_dmarc.${sesDomain} TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@debriefmd.ca"`,
       description: 'Manual DMARC record to add (TXT)',
     });
 

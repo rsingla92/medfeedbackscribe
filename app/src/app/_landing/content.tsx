@@ -374,7 +374,7 @@ function HeroVignette() {
   );
 }
 
-// Footer (no WhiteCoat Prep link)
+// Footer
 
 export function SiteFooter() {
   return (
@@ -412,7 +412,7 @@ export function SiteFooter() {
               </li>
               <li>
                 <a
-                  href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
+                  href="mailto:pilot@debriefmd.ca?subject=Program%20inquiry"
                   className="text-sm text-foreground hover:text-accent transition-colors"
                 >
                   Request a pilot

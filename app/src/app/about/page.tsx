@@ -212,10 +212,10 @@ export default function AboutPage() {
               has opinions about assessment, we want to hear from you.
             </p>
             <a
-              href="mailto:hello@whitecoatprep.com"
+              href="mailto:hello@debriefmd.ca"
               className="mt-8 inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover"
             >
-              hello@whitecoatprep.com
+              hello@debriefmd.ca
             </a>
           </div>
         </section>

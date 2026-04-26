@@ -3,7 +3,7 @@ import { SiteFooter } from "@/app/_landing/content";
 import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
-  title: "Accessibility — Debrief by Whitecoat Prep",
+  title: "Accessibility — Debrief",
   description:
     "Debrief's accessibility statement. We are working toward WCAG 2.1 AA and treat accessibility as ongoing work, not a launch checkbox.",
 };
@@ -162,10 +162,10 @@ export default function AccessibilityPage() {
               We will investigate and respond within five business days.
             </p>
             <a
-              href="mailto:accessibility@whitecoatprep.com"
+              href="mailto:accessibility@debriefmd.ca"
               className="inline-block font-[family-name:var(--font-mono)] text-sm font-medium text-accent underline underline-offset-2 hover:text-accent-hover transition-colors"
             >
-              accessibility@whitecoatprep.com
+              accessibility@debriefmd.ca
             </a>
           </section>
 

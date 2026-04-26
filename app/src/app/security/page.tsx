@@ -216,10 +216,10 @@ export default function SecurityPage() {
               We will respond within two business days.
             </p>
             <a
-              href="mailto:security@whitecoatprep.com"
+              href="mailto:security@debriefmd.ca"
               className="inline-block text-sm font-medium text-accent underline underline-offset-2 hover:text-accent-hover transition-colors"
             >
-              security@whitecoatprep.com
+              security@debriefmd.ca
             </a>
           </section>
 

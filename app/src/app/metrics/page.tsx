@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/db/client";
 
-/** Hardcoded admin emails for the pilot phase. */
-const PILOT_ADMINS = ["admin@debrief.whitecoatprep.com"];
+/** Pilot-phase admin emails. Override via PILOT_ADMIN_EMAILS (comma-separated). */
+const PILOT_ADMINS = (process.env.PILOT_ADMIN_EMAILS ?? "admin@debriefmd.ca")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 interface StatCardProps {
   label: string;

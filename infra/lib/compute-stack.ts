@@ -25,7 +25,7 @@ interface DebriefComputeStackProps extends cdk.StackProps {
   githubRepo?: string;
 }
 
-const SES_DOMAIN = 'debrief.whitecoatprep.com';
+const SES_DOMAIN = 'debriefmd.ca';
 const SES_FROM_EMAIL = `noreply@${SES_DOMAIN}`;
 
 /**
@@ -393,9 +393,9 @@ export class DebriefComputeStack extends cdk.Stack {
     // ====================================================================
     // 6. GitHub Actions OIDC deploy role.
     // ====================================================================
-    // The OIDC provider is account-wide. Check if it already exists (shared
-    // with WhiteCoatPrep) before creating. If the user has already created
-    // the provider elsewhere, comment out this construct and import it.
+    // The OIDC provider is account-wide. Check if it already exists in this
+    // AWS account before creating. If the provider was created by another
+    // stack, comment out this construct and import it via fromOpenIdConnectProviderArn.
     const githubOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubOidcProvider', {
       url: 'https://token.actions.githubusercontent.com',
       clientIds: ['sts.amazonaws.com'],
