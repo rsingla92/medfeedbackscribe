@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DebriefWordmark, SiteFooter } from "@/app/_landing/content";
+import { SiteFooter } from "@/app/_landing/content";
+import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
   title: "Security and Compliance — Debrief",
@@ -8,60 +9,10 @@ export const metadata: Metadata = {
     "How Debrief protects patient information: Canadian data residency, AES-256 encryption, PHI scrubbing before storage, and PHIPA/PIPEDA alignment.",
 };
 
-const subprocessors = [
-  {
-    category: "Application hosting",
-    vendor: "AWS App Runner (ca-central-1, Montreal)",
-    location: "Canada",
-    note: null,
-  },
-  {
-    category: "Database",
-    vendor: "AWS RDS for PostgreSQL (ca-central-1, Montreal)",
-    location: "Canada",
-    note: "Encrypted at rest with AWS KMS customer-managed keys. Private subnet, no public access.",
-  },
-  {
-    category: "Audio and export storage",
-    vendor: "AWS S3 (ca-central-1, Montreal)",
-    location: "Canada",
-    note: "Server-side encryption (SSE-KMS). Access via short-lived presigned URLs only.",
-  },
-  {
-    category: "Pipeline queue and compute",
-    vendor: "AWS SQS + AWS Lambda (ca-central-1, Montreal)",
-    location: "Canada",
-    note: null,
-  },
-  {
-    category: "Transcription and language processing",
-    vendor: "Google Cloud Vertex AI — Gemini 2.5 Flash",
-    location: "northamerica-northeast1, Montreal, Canada",
-    note: "Under Google Cloud BAA. No customer data is used to train Google models.",
-  },
-  {
-    category: "Transactional email",
-    vendor: "AWS SES (ca-central-1, Montreal)",
-    location: "Canada",
-    note: "Email notifications contain only a link back to Debrief. Transcripts and narrative summaries are never included in email body.",
-  },
-];
-
 export default function SecurityPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <nav
-        className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
-        aria-label="Site navigation"
-      >
-        <DebriefWordmark />
-        <a
-          href="mailto:dpa@whitecoatprep.com"
-          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-5 text-sm font-medium text-foreground transition-colors hover:bg-border-light"
-        >
-          Request DPA
-        </a>
-      </nav>
+      <SiteNav />
 
       <main
         id="main-content"
@@ -77,17 +28,12 @@ export default function SecurityPage() {
             <span className="text-accent">End to end.</span>
           </h1>
           <p className="mt-5 max-w-[600px] text-lg leading-relaxed text-muted">
-            This page describes how Debrief handles patient-adjacent data: where
-            it is stored, how it is protected, what gets scrubbed before
+            This page describes how Debrief handles patient-adjacent data:
+            where it is stored, how it is protected, what gets scrubbed before
             storage, and who can access what. Written for institutional
             procurement, IT, and privacy officers.
           </p>
-          <p className="mt-3 text-sm text-muted">
-            Last updated: April 24, 2026.{" "}
-            <span className="font-medium text-warning">
-              Draft, pending formal legal review.
-            </span>
-          </p>
+          <p className="mt-3 text-sm text-muted">Last updated: April 25, 2026.</p>
         </div>
 
         <div className="space-y-12">
@@ -101,10 +47,9 @@ export default function SecurityPage() {
             <p className="text-base leading-relaxed text-muted">
               All storage and compute happens on Canadian infrastructure. The
               application, database, object storage, message queue, pipeline
-              compute, and email delivery all run in AWS&apos;s Montreal region
-              (ca-central-1). Transcription and language processing run on
-              Google Cloud&apos;s northamerica-northeast1 (Montreal) region
-              under a signed BAA.
+              compute, transcription, language processing, and email delivery
+              all run in Canadian regions under signed data processing
+              agreements.
             </p>
             <div className="mt-5 rounded-[var(--radius-md)] bg-success-light border border-success border-opacity-30 px-4 py-3">
               <p className="text-sm font-medium text-foreground">
@@ -131,12 +76,12 @@ export default function SecurityPage() {
                   At rest
                 </p>
                 <p className="font-[family-name:var(--font-mono)] text-base font-semibold text-foreground">
-                  AES-256 + KMS
+                  AES-256
                 </p>
                 <p className="mt-2 text-sm text-muted">
-                  All data at rest (database, object storage, message queue, and
-                  secret store) is encrypted with AWS KMS customer-managed
-                  keys, rotated annually.
+                  All data at rest (database, object storage, message queue,
+                  and secret store) is encrypted with customer-managed keys,
+                  rotated annually.
                 </p>
               </div>
               <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
@@ -163,8 +108,8 @@ export default function SecurityPage() {
             </h2>
             <p className="text-base leading-relaxed text-muted">
               The database sits in a private subnet with no public IP. It is
-              only reachable from the application and pipeline worker. The S3
-              bucket blocks all public access and is only readable through
+              only reachable from the application and pipeline worker. Object
+              storage blocks all public access and is only readable through
               short-lived presigned URLs issued by the application after an
               authenticated, ownership-scoped check.
             </p>
@@ -178,13 +123,13 @@ export default function SecurityPage() {
               PHI handling
             </h2>
             <p className="text-base leading-relaxed text-muted">
-              Audio recordings sometimes contain patient-identifying information
-              even when the intent is to capture feedback about clinical skills.
-              We treat this as expected, and the transcript is scrubbed before
-              it is stored or displayed. The system covers all 18 HIPAA
-              identifier categories plus Canadian-specific identifiers (SIN,
-              provincial health card numbers, postal codes). Redactions are
-              inline markers (for example, <code>[REDACTED-NAME]</code>) so
+              Audio recordings sometimes contain patient-identifying
+              information even when the intent is to capture feedback about
+              clinical skills. We treat this as expected, and the transcript is
+              scrubbed before it is stored or displayed. The system covers all
+              18 HIPAA identifier categories plus Canadian-specific identifiers
+              (SIN, provincial health card numbers, postal codes). Redactions
+              are inline markers (for example, <code>[REDACTED-NAME]</code>) so
               auditors can see what was detected.
             </p>
             <p className="mt-4 text-base leading-relaxed text-muted">
@@ -254,75 +199,6 @@ export default function SecurityPage() {
                 </div>
               </li>
             </ul>
-            <div className="mt-5 rounded-[var(--radius-md)] bg-warning-bg border border-warning border-opacity-40 px-4 py-3">
-              <p className="text-sm text-muted">
-                <span className="font-medium text-foreground">
-                  Aspirational statement:
-                </span>{" "}
-                This compliance posture reflects our design intent and
-                engineering decisions. It has not been independently audited
-                or certified. We recommend institutions conduct their own
-                privacy impact assessment before deploying in a regulated
-                context.
-              </p>
-            </div>
-          </section>
-
-          <section aria-labelledby="subprocessors-heading">
-            <h2
-              id="subprocessors-heading"
-              className="font-[family-name:var(--font-display)] text-xl text-foreground mb-3"
-            >
-              Subprocessors
-            </h2>
-            <p className="text-base leading-relaxed text-muted mb-6">
-              These are the third-party services Debrief relies on. Every one
-              operates in a Canadian region.
-            </p>
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-surface">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted">
-                      Function
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted">
-                      Vendor
-                    </th>
-                    <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted sm:table-cell">
-                      Location
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subprocessors.map((sp, i) => (
-                    <tr
-                      key={sp.vendor}
-                      className={
-                        i < subprocessors.length - 1
-                          ? "border-b border-border-light"
-                          : ""
-                      }
-                    >
-                      <td className="px-4 py-3 font-medium text-foreground align-top">
-                        {sp.category}
-                        {sp.note && (
-                          <p className="mt-1 text-xs font-normal text-muted leading-relaxed">
-                            {sp.note}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-[family-name:var(--font-mono)] text-xs text-foreground align-top">
-                        {sp.vendor}
-                      </td>
-                      <td className="hidden px-4 py-3 text-muted align-top sm:table-cell">
-                        {sp.location}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </section>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

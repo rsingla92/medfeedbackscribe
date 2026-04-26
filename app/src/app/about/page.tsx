@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { DebriefWordmark, SiteFooter } from "@/app/_landing/content";
+import { SiteFooter } from "@/app/_landing/content";
+import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
   title: "About — Debrief",
@@ -19,7 +19,7 @@ const beliefs = [
   },
   {
     title: "Assessment data should reflect what was actually said.",
-    body: "Competency ratings filled in from memory, days after an encounter, reflect the form, not the case. Data drawn directly from the conversation is more accurate, more specific, and more useful — for the resident and the program.",
+    body: "Competency ratings filled in from memory, days after an encounter, reflect the form, not the case. Data drawn directly from the conversation is more accurate, more specific, and more useful for the resident and the program.",
   },
   {
     title: "Canadian training data stays in Canada.",
@@ -30,26 +30,7 @@ const beliefs = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <nav
-        className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
-        aria-label="Site navigation"
-      >
-        <DebriefWordmark />
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            href="/auth"
-            className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/demo"
-            className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover sm:px-5"
-          >
-            Try it free
-          </Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       <main id="main-content">
         {/* Hero */}
@@ -106,25 +87,24 @@ export default function AboutPage() {
                 <path d="M7.5 5.25A2.25 2.25 0 0 0 5.25 7.5v4.5A2.25 2.25 0 0 0 7.5 14.25h1.19l-.63 3.38a.75.75 0 0 0 1.22.73l4.5-4.13a.75.75 0 0 0 .22-.54V7.5A2.25 2.25 0 0 0 11.75 5.25h-4.25Zm9 0A2.25 2.25 0 0 0 14.25 7.5v4.5A2.25 2.25 0 0 0 16.5 14.25h1.19l-.63 3.38a.75.75 0 0 0 1.22.73l4.5-4.13a.75.75 0 0 0 .22-.54V7.5a2.25 2.25 0 0 0-2.25-2.25h-4.25Z" />
               </svg>
               <p className="font-[family-name:var(--font-display)] text-xl leading-snug text-foreground italic">
-                &ldquo;My preceptor gave me the best feedback of my training — in the
-                stairwell, at 2am. None of it ever made it to a form.&rdquo;
+                &ldquo;My preceptor gave me the best feedback in person. None
+                of it made it to the form.&rdquo;
               </p>
             </div>
 
             <div className="mt-8 space-y-5 text-base leading-relaxed text-muted">
               <p>
-                Debrief was built by a family medicine resident in British
-                Columbia after years of watching the same thing happen on every
-                rotation: a preceptor gives rich, specific, immediately useful
-                verbal feedback right after a case — and none of it is ever
-                written down.
+                Debrief was built by a resident in British Columbia, watching
+                the same thing happen on every rotation: a preceptor gives
+                rich, specific, immediately useful verbal feedback right after
+                a case, and what does get written down rarely captures it.
               </p>
               <p>
-                What gets written down is the form. The generic boxes, filled
-                in days later from memory, with whichever trainee happened to
-                come to mind that week. The actual feedback — the part that
-                would have changed how the trainee practices tomorrow — lives
-                in the hallway and then disappears.
+                What gets written down is the form: generic boxes, filled in
+                days later from memory, with whichever trainee happened to come
+                to mind that week. The actual feedback, the part that would
+                have changed how the trainee practices tomorrow, lives in the
+                hallway and then disappears.
               </p>
               <p>
                 That gap between what&rsquo;s said and what&rsquo;s documented
@@ -228,9 +208,8 @@ export default function AboutPage() {
               Talk to us.
             </h2>
             <p className="mx-auto mt-4 max-w-[480px] text-base leading-relaxed text-muted">
-              If you&rsquo;re running a residency program — or if you&rsquo;re a
-              resident who has opinions about assessment — we want to hear from
-              you.
+              If you&rsquo;re running a residency program, or a resident who
+              has opinions about assessment, we want to hear from you.
             </p>
             <a
               href="mailto:hello@whitecoatprep.com"

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { SiteFooter } from "@/app/_landing/content";
+import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Debrief by Whitecoat Prep",
@@ -9,34 +10,12 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Draft banner */}
-      <div
-        className="w-full bg-warning-bg border-b border-warning px-6 py-3 text-center text-sm font-medium text-warning"
-        role="alert"
-      >
-        Draft, not yet legally reviewed. Do not rely on this document for legal
-        compliance.
-      </div>
-
-      {/* Nav */}
-      <nav
-        className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
-        aria-label="Site navigation"
-      >
-        <Link
-          href="/landing"
-          className="font-[family-name:var(--font-display)] text-xl text-accent"
-          aria-label="Debrief by Whitecoat Prep — home"
-        >
-          Debrief
-        </Link>
-      </nav>
+      <SiteNav />
 
       <main
         id="main-content"
         className="mx-auto max-w-[720px] px-6 py-12 sm:py-16"
       >
-        {/* Header */}
         <div className="mb-10">
           <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
             Legal
@@ -45,13 +24,12 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p className="mt-3 text-sm text-muted">
-            Last updated: April 14, 2026.
+            Last updated: April 25, 2026.
           </p>
         </div>
 
         <div className="space-y-10 text-base leading-relaxed text-foreground">
 
-          {/* 1. Who can use */}
           <section aria-labelledby="who-can-use">
             <h2
               id="who-can-use"
@@ -68,7 +46,6 @@ export default function TermsPage() {
             </p>
           </section>
 
-          {/* 2. Acceptable use */}
           <section aria-labelledby="acceptable-use">
             <h2
               id="acceptable-use"
@@ -87,8 +64,8 @@ export default function TermsPage() {
                 own training record.
               </li>
               <li>
-                Exporting assessments into your program's official assessment
-                system.
+                Exporting assessments into your program&rsquo;s official
+                assessment system.
               </li>
             </ul>
             <p className="mt-4 text-muted">You agree NOT to:</p>
@@ -107,7 +84,6 @@ export default function TermsPage() {
             </ul>
           </section>
 
-          {/* 3. Intellectual property */}
           <section aria-labelledby="ip">
             <h2
               id="ip"
@@ -122,12 +98,11 @@ export default function TermsPage() {
               claim any rights to your assessment content.
             </p>
             <p className="mt-4 text-muted">
-              The Debrief platform, software, and design remain the intellectual
-              property of Whitecoat Prep.
+              The Debrief platform, software, and design remain the
+              intellectual property of Whitecoat Prep.
             </p>
           </section>
 
-          {/* 4. No medical advice */}
           <section aria-labelledby="no-medical-advice">
             <h2
               id="no-medical-advice"
@@ -137,9 +112,9 @@ export default function TermsPage() {
             </h2>
             <p className="text-muted">
               Debrief is an assessment documentation tool. It does not provide
-              medical advice, clinical guidance, or recommendations about patient
-              care. No output from Debrief should be used to make clinical
-              decisions.
+              medical advice, clinical guidance, or recommendations about
+              patient care. No output from Debrief should be used to make
+              clinical decisions.
             </p>
             <p className="mt-4 text-muted">
               Whitecoat Prep is not liable for any clinical decisions made in
@@ -148,7 +123,6 @@ export default function TermsPage() {
             </p>
           </section>
 
-          {/* 5. Account termination */}
           <section aria-labelledby="termination">
             <h2
               id="termination"
@@ -162,12 +136,11 @@ export default function TermsPage() {
               permanently removed within 30 days.
             </p>
             <p className="mt-4 text-muted">
-              We reserve the right to suspend or terminate accounts that violate
-              these terms, with or without notice.
+              We reserve the right to suspend or terminate accounts that
+              violate these terms, with or without notice.
             </p>
           </section>
 
-          {/* 6. Governing law */}
           <section aria-labelledby="governing-law">
             <h2
               id="governing-law"
@@ -183,7 +156,6 @@ export default function TermsPage() {
             </p>
           </section>
 
-          {/* 7. Changes */}
           <section aria-labelledby="changes-terms">
             <h2
               id="changes-terms"
@@ -199,7 +171,6 @@ export default function TermsPage() {
             </p>
           </section>
 
-          {/* Contact */}
           <section
             aria-labelledby="contact-terms"
             className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
@@ -224,32 +195,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border mt-16">
-        <div className="mx-auto max-w-[960px] px-6 py-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted">
-            <p>
-              Debrief by{" "}
-              <a
-                href="https://www.whitecoatprep.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline underline-offset-2 hover:text-accent-hover"
-              >
-                Whitecoat Prep
-              </a>
-            </p>
-            <div className="flex gap-4">
-              <Link href="/privacy" className="hover:text-foreground transition-colors">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-foreground transition-colors">
-                Terms
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

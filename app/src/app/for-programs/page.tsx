@@ -1,34 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteFooter } from "@/app/_landing/content";
+import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
   title: "For Programs — Debrief by Whitecoat Prep",
   description:
     "Debrief helps residency programs increase assessment completion rates, capture verbal feedback formally, and build richer competency data sets. Canadian data residency included.",
 };
-
-function DebriefWordmark() {
-  return (
-    <Link
-      href="/landing"
-      className="flex items-center gap-2"
-      aria-label="Debrief by Whitecoat Prep — home"
-    >
-      <span aria-hidden="true" className="flex items-end gap-[2px] h-5">
-        <span className="w-[3px] h-2 rounded-full bg-accent opacity-60" />
-        <span className="w-[3px] h-4 rounded-full bg-accent" />
-        <span className="w-[3px] h-3 rounded-full bg-accent opacity-80" />
-        <span className="w-[3px] h-5 rounded-full bg-accent" />
-        <span className="w-[3px] h-2.5 rounded-full bg-accent opacity-70" />
-        <span className="w-[3px] h-3.5 rounded-full bg-accent opacity-90" />
-        <span className="w-[3px] h-1.5 rounded-full bg-accent opacity-50" />
-      </span>
-      <span className="font-[family-name:var(--font-display)] text-xl text-accent leading-none">
-        Debrief
-      </span>
-    </Link>
-  );
-}
 
 const problemPoints = [
   "Assessment completion rates stay low because filling out a form after a busy shift is the last thing a preceptor wants to do.",
@@ -76,19 +55,7 @@ const rolloutSteps = [
 export default function ForProgramsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav */}
-      <nav
-        className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
-        aria-label="Site navigation"
-      >
-        <DebriefWordmark />
-        <a
-          href="mailto:pilot@whitecoatprep.com?subject=Program%20inquiry"
-          className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-        >
-          Request a pilot
-        </a>
-      </nav>
+      <SiteNav />
 
       <main id="main-content">
         {/* Hero */}
@@ -270,38 +237,7 @@ export default function ForProgramsPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-[960px] px-6 py-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted">
-            <p>
-              Debrief by{" "}
-              <a
-                href="https://www.whitecoatprep.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline underline-offset-2 hover:text-accent-hover"
-              >
-                Whitecoat Prep
-              </a>
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link href="/landing" className="hover:text-foreground transition-colors">
-                Home
-              </Link>
-              <Link href="/security" className="hover:text-foreground transition-colors">
-                Security
-              </Link>
-              <Link href="/privacy" className="hover:text-foreground transition-colors">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-foreground transition-colors">
-                Terms
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

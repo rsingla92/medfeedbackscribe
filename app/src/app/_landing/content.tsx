@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { SiteNav } from "./site-nav";
 
 // Wordmark
 
@@ -513,35 +514,7 @@ export function LandingContent({
 } = {}) {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <nav
-        className="mx-auto flex max-w-[960px] items-center justify-between gap-3 px-6 py-5"
-        aria-label="Site navigation"
-      >
-        <DebriefWordmark href="/" />
-        <div className="flex items-center gap-2 sm:gap-3">
-          {isAuthenticated ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
-            >
-              Go to dashboard
-            </Link>
-          ) : (
-            <Link
-              href="/auth"
-              className="inline-flex h-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border-light sm:px-5"
-            >
-              Sign in
-            </Link>
-          )}
-          <Link
-            href="/demo"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover sm:px-5"
-          >
-            Try it free
-          </Link>
-        </div>
-      </nav>
+      <SiteNav isAuthenticated={isAuthenticated} />
 
       <main id="main-content">
         <section
@@ -621,14 +594,14 @@ export function LandingContent({
               id="problem-heading"
               className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
             >
-              The best feedback happens in the hallway.
-              <br className="hidden sm:block" /> None of it makes it to the form.
+              My preceptor gave me the best feedback in person.
+              <br className="hidden sm:block" /> None of it made it to the form.
             </h2>
             <p className="mt-5 max-w-[680px] text-base leading-relaxed text-muted">
-              Verbal feedback is some of the richest a trainee will ever get.
-              But filling out a form right after a case is friction — so the
-              conversation lives in someone&rsquo;s memory for a few hours, then
-              it&rsquo;s gone.
+              Verbal feedback is some of the richest a trainee will ever get,
+              but filling out a form after a case is friction. The conversation
+              lives in someone&rsquo;s memory for a few hours, and what does
+              get written down rarely captures what was actually said.
             </p>
             <p className="mt-4 max-w-[680px] text-base leading-relaxed text-muted">
               Debrief lets a preceptor speak for a few minutes whenever the
@@ -738,6 +711,37 @@ export function LandingContent({
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="programs-heading"
+          className="border-t border-border"
+        >
+          <div className="mx-auto max-w-[960px] px-6 py-16 sm:py-20">
+            <div className="flex flex-col gap-6 rounded-[var(--radius-lg)] border border-border bg-surface p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10">
+              <div className="max-w-[520px]">
+                <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted">
+                  For program directors
+                </p>
+                <h2
+                  id="programs-heading"
+                  className="font-[family-name:var(--font-display)] text-[1.5rem] leading-[1.2] text-foreground sm:text-[1.75rem]"
+                >
+                  Higher completion. Richer competency data.
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  How Debrief fits into your existing assessment workflow, and
+                  how to start a pilot this rotation.
+                </p>
+              </div>
+              <Link
+                href="/for-programs"
+                className="inline-flex h-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-border bg-background px-6 text-sm font-medium text-foreground transition-colors hover:bg-border-light"
+              >
+                See For programs
+              </Link>
+            </div>
           </div>
         </section>
 

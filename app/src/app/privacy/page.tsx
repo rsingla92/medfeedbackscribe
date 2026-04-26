@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteFooter } from "@/app/_landing/content";
+import { SiteNav } from "@/app/_landing/site-nav";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Debrief by Whitecoat Prep",
@@ -9,25 +11,12 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav */}
-      <nav
-        className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-5"
-        aria-label="Site navigation"
-      >
-        <Link
-          href="/landing"
-          className="font-[family-name:var(--font-display)] text-xl text-accent"
-          aria-label="Debrief by Whitecoat Prep — home"
-        >
-          Debrief
-        </Link>
-      </nav>
+      <SiteNav />
 
       <main
         id="main-content"
         className="mx-auto max-w-[720px] px-6 py-12 sm:py-16"
       >
-        {/* Header */}
         <div className="mb-10">
           <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
             Legal
@@ -36,16 +25,12 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="mt-3 text-sm text-muted">
-            Last updated: April 14, 2026.{" "}
-            <span className="font-medium text-warning">
-              Draft, pending legal review.
-            </span>
+            Last updated: April 25, 2026.
           </p>
         </div>
 
         <div className="prose-stone space-y-10 text-base leading-relaxed text-foreground">
 
-          {/* 1. Who we are */}
           <section aria-labelledby="who-we-are">
             <h2
               id="who-we-are"
@@ -54,18 +39,11 @@ export default function PrivacyPage() {
               1. Who we are
             </h2>
             <p className="text-muted">
-              Debrief is a product of Whitecoat Prep (contact:{" "}
-              <a
-                href="mailto:privacy@whitecoatprep.com"
-                className="text-accent underline underline-offset-2 hover:text-accent-hover"
-              >
-                privacy@whitecoatprep.com
-              </a>
-              ). We build tools for medical trainees and their supervisors.
+              Debrief is a product of Whitecoat Prep. We build tools for
+              medical trainees and their supervisors.
             </p>
           </section>
 
-          {/* 2. What data we collect */}
           <section aria-labelledby="what-data">
             <h2
               id="what-data"
@@ -103,7 +81,6 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          {/* 3. How we use it */}
           <section aria-labelledby="how-we-use">
             <h2
               id="how-we-use"
@@ -119,7 +96,6 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          {/* 4. Where data is stored */}
           <section aria-labelledby="where-stored">
             <h2
               id="where-stored"
@@ -128,13 +104,12 @@ export default function PrivacyPage() {
               4. Where data is stored
             </h2>
             <p className="text-muted">
-              All data is stored in Canada (ca-central-1 region) on
-              infrastructure provided by Supabase. Data is encrypted at rest
-              (AES-256) and in transit (TLS 1.2+). It never leaves Canada.
+              All data is stored in Canada on Canadian infrastructure. Data is
+              encrypted at rest (AES-256) and in transit (TLS 1.2+). It never
+              leaves Canada.
             </p>
           </section>
 
-          {/* 5. Third-party processors */}
           <section aria-labelledby="third-parties">
             <h2
               id="third-parties"
@@ -167,13 +142,8 @@ export default function PrivacyPage() {
                 notifications.
               </li>
             </ul>
-            <p className="mt-4 text-muted">
-              We do not name vendors on this page as our provider agreements
-              are subject to change. Contact us if you need specific details.
-            </p>
           </section>
 
-          {/* 6. Your rights */}
           <section aria-labelledby="your-rights">
             <h2
               id="your-rights"
@@ -203,18 +173,17 @@ export default function PrivacyPage() {
               </li>
             </ul>
             <p className="mt-4 text-muted">
-              To exercise any of these rights, email{" "}
-              <a
-                href="mailto:privacy@whitecoatprep.com"
+              To exercise any of these rights, get in touch via our{" "}
+              <Link
+                href="/contact"
                 className="text-accent underline underline-offset-2 hover:text-accent-hover"
               >
-                privacy@whitecoatprep.com
-              </a>
+                contact page
+              </Link>
               . We will respond within 30 days.
             </p>
           </section>
 
-          {/* 7. Compliance */}
           <section aria-labelledby="compliance">
             <h2
               id="compliance"
@@ -225,13 +194,10 @@ export default function PrivacyPage() {
             <p className="text-muted">
               We are committed to compliance with PHIPA (Personal Health
               Information Protection Act, Ontario) and PIPEDA (Personal
-              Information Protection and Electronic Documents Act). This policy
-              is a draft and is pending formal legal review. It does not
-              constitute legal advice or a binding compliance certification.
+              Information Protection and Electronic Documents Act).
             </p>
           </section>
 
-          {/* 8. Changes */}
           <section aria-labelledby="changes">
             <h2
               id="changes"
@@ -246,7 +212,6 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          {/* Contact */}
           <section
             aria-labelledby="contact"
             className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
@@ -258,45 +223,20 @@ export default function PrivacyPage() {
               Questions?
             </h2>
             <p className="text-muted text-sm">
-              Email us at{" "}
-              <a
-                href="mailto:privacy@whitecoatprep.com"
+              Reach out via our{" "}
+              <Link
+                href="/contact"
                 className="text-accent underline underline-offset-2 hover:text-accent-hover"
               >
-                privacy@whitecoatprep.com
-              </a>{" "}
-              or write to Whitecoat Prep, British Columbia, Canada.
+                contact page
+              </Link>
+              .
             </p>
           </section>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border mt-16">
-        <div className="mx-auto max-w-[960px] px-6 py-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted">
-            <p>
-              Debrief by{" "}
-              <a
-                href="https://www.whitecoatprep.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline underline-offset-2 hover:text-accent-hover"
-              >
-                Whitecoat Prep
-              </a>
-            </p>
-            <div className="flex gap-4">
-              <Link href="/privacy" className="hover:text-foreground transition-colors">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-foreground transition-colors">
-                Terms
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
