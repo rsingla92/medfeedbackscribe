@@ -38,7 +38,7 @@ export default function AboutPage() {
           aria-labelledby="hero-heading"
           className="mx-auto max-w-[720px] px-6 pb-16 pt-14 sm:pb-20 sm:pt-20"
         >
-          <p className="mb-4 inline-block rounded-full border border-border bg-surface px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted">
+          <p className="mb-4 inline-block rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted">
             Built by a resident, for residency programs
           </p>
           <h1

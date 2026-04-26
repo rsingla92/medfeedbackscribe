@@ -180,14 +180,14 @@ const features = [
 function RecordMockup() {
   return (
     <div
-      className="mx-auto mt-4 w-36 rounded-[var(--radius-lg)] border border-border bg-background p-3 shadow-sm"
+      className="mx-auto mt-5 w-44 rounded-[var(--radius-lg)] border border-border bg-background p-4 shadow-sm"
       aria-hidden="true"
     >
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-[9px] font-medium uppercase tracking-widest text-muted">
+      <div className="flex flex-col items-center gap-2.5">
+        <div className="text-xs font-medium uppercase tracking-widest text-muted">
           Recording
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent shadow-[0_2px_12px_rgba(217,119,6,0.35)]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-[0_2px_12px_rgba(217,119,6,0.35)]">
           <svg viewBox="0 0 24 24" fill="white" className="h-5 w-5">
             <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
           </svg>
@@ -201,7 +201,7 @@ function RecordMockup() {
             />
           ))}
         </div>
-        <div className="font-[family-name:var(--font-mono)] text-[9px] text-muted">
+        <div className="font-[family-name:var(--font-mono)] text-xs text-muted">
           0:42
         </div>
       </div>
@@ -212,20 +212,20 @@ function RecordMockup() {
 function ProcessMockup() {
   return (
     <div
-      className="mx-auto mt-4 w-44 rounded-[var(--radius-lg)] border border-border bg-background p-3 shadow-sm"
+      className="mx-auto mt-5 w-full max-w-[260px] rounded-[var(--radius-lg)] border border-border bg-background p-4 shadow-sm"
       aria-hidden="true"
     >
-      <div className="text-[9px] font-medium uppercase tracking-widest text-muted mb-2">
+      <div className="text-xs font-medium uppercase tracking-widest text-muted mb-2">
         Transcript
       </div>
-      <p className="text-[10px] leading-relaxed text-foreground">
+      <p className="text-[13px] leading-relaxed text-foreground">
         &ldquo;Good differential today. Your history-taking was thorough and
         your plan presentation was confident. Consider starting imaging
         earlier next time...&rdquo;
       </p>
-      <div className="mt-2 flex items-center gap-1">
+      <div className="mt-3 flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-success" />
-        <span className="text-[9px] text-muted">Patient identifiers removed</span>
+        <span className="text-xs text-muted">Patient identifiers removed</span>
       </div>
     </div>
   );
@@ -234,10 +234,10 @@ function ProcessMockup() {
 function ReviewMockup() {
   return (
     <div
-      className="mx-auto mt-4 w-44 rounded-[var(--radius-lg)] border border-border bg-background p-3 shadow-sm"
+      className="mx-auto mt-5 w-full max-w-[260px] rounded-[var(--radius-lg)] border border-border bg-background p-4 shadow-sm"
       aria-hidden="true"
     >
-      <div className="text-[9px] font-medium uppercase tracking-widest text-muted mb-2">
+      <div className="text-xs font-medium uppercase tracking-widest text-muted mb-2">
         Assessment
       </div>
       {[
@@ -247,16 +247,16 @@ function ReviewMockup() {
       ].map((row) => (
         <div
           key={row.label}
-          className="flex items-center justify-between border-b border-border-light py-1 last:border-0"
+          className="flex items-center justify-between border-b border-border-light py-1.5 last:border-0"
         >
-          <span className="text-[9px] text-muted">{row.label}</span>
-          <span className="font-[family-name:var(--font-mono)] text-[9px] font-semibold text-accent">
+          <span className="text-[13px] text-muted">{row.label}</span>
+          <span className="font-[family-name:var(--font-mono)] text-[13px] font-semibold text-accent">
             {row.value}
           </span>
         </div>
       ))}
-      <div className="mt-2 flex justify-end">
-        <span className="rounded-[var(--radius-sm)] bg-accent px-2 py-0.5 text-[9px] font-semibold text-white">
+      <div className="mt-3 flex justify-end">
+        <span className="rounded-[var(--radius-sm)] bg-accent px-2.5 py-0.5 text-xs font-semibold text-white">
           Export
         </span>
       </div>
@@ -289,9 +289,9 @@ function HeroVignette() {
   return (
     <div
       aria-hidden="true"
-      className="flex flex-col items-center gap-3 w-full max-w-[320px] mx-auto lg:mx-0 lg:max-w-[300px]"
+      className="flex flex-col items-center gap-4 w-full max-w-[380px] mx-auto lg:mx-0 lg:max-w-[360px]"
     >
-      <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm p-4">
+      <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="flex items-end gap-[2px] h-4 shrink-0">
             {[3, 6, 4, 7, 5, 3, 6, 4].map((h, i) => (
@@ -302,12 +302,12 @@ function HeroVignette() {
               />
             ))}
           </div>
-          <span className="text-[10px] font-medium uppercase tracking-widest text-muted">
+          <span className="text-xs font-medium uppercase tracking-widest text-muted">
             Preceptor speaking
           </span>
         </div>
-        <div className="relative rounded-[var(--radius-md)] bg-background border border-border px-3 py-2.5">
-          <p className="text-[11px] leading-relaxed text-foreground italic">
+        <div className="relative rounded-[var(--radius-md)] bg-background border border-border px-4 py-3">
+          <p className="text-sm leading-relaxed text-foreground italic">
             &ldquo;Your approach to the differential was methodical. You picked
             up the history details that mattered and communicated the plan
             clearly to the team.&rdquo;
@@ -330,16 +330,16 @@ function HeroVignette() {
             d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"
           />
         </svg>
-        <span className="text-[10px] font-medium uppercase tracking-widest text-muted">
+        <span className="text-xs font-medium uppercase tracking-widest text-muted">
           Structured
         </span>
       </div>
 
-      <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm p-4">
-        <div className="text-[10px] font-medium uppercase tracking-widest text-muted mb-3">
+      <div className="w-full rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm p-5">
+        <div className="text-xs font-medium uppercase tracking-widest text-muted mb-3">
           Assessment form
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {[
             { role: "Medical Expert", rating: "4 / 5", tag: "CanMEDS" },
             { role: "Communicator", rating: "5 / 5", tag: "CanMEDS" },
@@ -350,14 +350,14 @@ function HeroVignette() {
               className="flex items-center justify-between border-b border-border-light pb-2 last:border-0 last:pb-0"
             >
               <div>
-                <span className="text-[10px] font-medium text-foreground">
+                <span className="text-sm font-medium text-foreground">
                   {row.role}
                 </span>
-                <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[9px] text-muted">
+                <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[11px] text-muted">
                   {row.tag}
                 </span>
               </div>
-              <span className="font-[family-name:var(--font-mono)] text-[10px] font-semibold text-accent">
+              <span className="font-[family-name:var(--font-mono)] text-sm font-semibold text-accent">
                 {row.rating}
               </span>
             </div>
@@ -365,7 +365,7 @@ function HeroVignette() {
         </div>
         <div className="mt-3 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-          <span className="text-[9px] text-muted">
+          <span className="text-xs text-muted">
             Resident reviews and edits before export
           </span>
         </div>
@@ -523,7 +523,7 @@ export function LandingContent({
         >
           <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-start lg:gap-16">
             <div className="flex-1 text-center lg:text-left">
-              <p className="mb-4 inline-block rounded-full border border-border bg-surface px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted">
+              <p className="mb-4 inline-block rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted">
                 Built by a resident, for residency programs
               </p>
               <h1
@@ -569,7 +569,7 @@ export function LandingContent({
               </p>
 
               <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
-                <p className="text-xs text-muted">
+                <p className="text-sm text-muted">
                   Piloting with{" "}
                   <span className="font-medium text-foreground">
                     UBC Family Medicine
@@ -635,7 +635,7 @@ export function LandingContent({
               id="how-heading"
               className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
             >
-              Three steps. A few minutes.
+              Three steps. A few minutes. No forms.
             </h2>
 
             <ol
