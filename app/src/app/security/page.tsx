@@ -201,50 +201,27 @@ export default function SecurityPage() {
             </ul>
           </section>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <section
-              aria-labelledby="dpa-heading"
-              className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
+          <section
+            aria-labelledby="vuln-heading"
+            className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
+          >
+            <h2
+              id="vuln-heading"
+              className="font-[family-name:var(--font-display)] text-lg text-foreground mb-2"
             >
-              <h2
-                id="dpa-heading"
-                className="font-[family-name:var(--font-display)] text-lg text-foreground mb-2"
-              >
-                Data Processing Agreement
-              </h2>
-              <p className="text-sm text-muted mb-4">
-                A DPA is available on request for institutional procurement.
-              </p>
-              <a
-                href="mailto:dpa@whitecoatprep.com"
-                className="inline-block text-sm font-medium text-accent underline underline-offset-2 hover:text-accent-hover transition-colors"
-              >
-                dpa@whitecoatprep.com
-              </a>
-            </section>
-
-            <section
-              aria-labelledby="vuln-heading"
-              className="rounded-[var(--radius-lg)] border border-border bg-surface p-6"
+              Vulnerability disclosure
+            </h2>
+            <p className="text-sm text-muted mb-4">
+              If you discover a security issue, please report it responsibly.
+              We will respond within two business days.
+            </p>
+            <a
+              href="mailto:security@whitecoatprep.com"
+              className="inline-block text-sm font-medium text-accent underline underline-offset-2 hover:text-accent-hover transition-colors"
             >
-              <h2
-                id="vuln-heading"
-                className="font-[family-name:var(--font-display)] text-lg text-foreground mb-2"
-              >
-                Vulnerability disclosure
-              </h2>
-              <p className="text-sm text-muted mb-4">
-                If you discover a security issue, please report it responsibly.
-                We will respond within two business days.
-              </p>
-              <a
-                href="mailto:security@whitecoatprep.com"
-                className="inline-block text-sm font-medium text-accent underline underline-offset-2 hover:text-accent-hover transition-colors"
-              >
-                security@whitecoatprep.com
-              </a>
-            </section>
-          </div>
+              security@whitecoatprep.com
+            </a>
+          </section>
 
           <div className="flex justify-center pt-4">
             <Link

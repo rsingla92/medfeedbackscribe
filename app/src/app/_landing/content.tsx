@@ -558,6 +558,16 @@ export function LandingContent({
                 </a>
               </div>
 
+              <p className="mt-5 text-sm text-muted">
+                Running a residency program?{" "}
+                <Link
+                  href="/for-programs"
+                  className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover"
+                >
+                  See For programs &rarr;
+                </Link>
+              </p>
+
               <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
                 <p className="text-xs text-muted">
                   Piloting with{" "}
@@ -711,37 +721,6 @@ export function LandingContent({
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
-
-        <section
-          aria-labelledby="programs-heading"
-          className="border-t border-border"
-        >
-          <div className="mx-auto max-w-[960px] px-6 py-16 sm:py-20">
-            <div className="flex flex-col gap-6 rounded-[var(--radius-lg)] border border-border bg-surface p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10">
-              <div className="max-w-[520px]">
-                <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted">
-                  For program directors
-                </p>
-                <h2
-                  id="programs-heading"
-                  className="font-[family-name:var(--font-display)] text-[1.5rem] leading-[1.2] text-foreground sm:text-[1.75rem]"
-                >
-                  Higher completion. Richer competency data.
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-muted">
-                  How Debrief fits into your existing assessment workflow, and
-                  how to start a pilot this rotation.
-                </p>
-              </div>
-              <Link
-                href="/for-programs"
-                className="inline-flex h-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-border bg-background px-6 text-sm font-medium text-foreground transition-colors hover:bg-border-light"
-              >
-                See For programs
-              </Link>
-            </div>
           </div>
         </section>
 

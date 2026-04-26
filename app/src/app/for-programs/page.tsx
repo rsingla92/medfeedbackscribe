@@ -37,18 +37,37 @@ const programBenefits = [
 const rolloutSteps = [
   {
     number: "01",
-    title: "Pilot with 5 to 10 residents",
-    body: "Start with a cohort already comfortable with mobile-first tools. No IT integration required. Residents sign up, record, and export within the first week.",
+    title: "Pilot one block, 5 to 10 residents",
+    body: "Pick a single rotation block (about one month). No IT integration required. Residents sign up, record, and export within the first week.",
   },
   {
     number: "02",
-    title: "Integrate with your current forms",
-    body: "Debrief exports to CSV or PDF. Drop the output into your existing assessment system, whether that is One45, MedSIS, or your own forms. No new software to maintain.",
+    title: "Drop into your existing forms",
+    body: "Debrief exports to CSV or PDF. Drop the output into your current assessment system, whether that is One45, MedSIS, or your own forms. No new software to maintain.",
   },
   {
     number: "03",
-    title: "Scale to the full program",
-    body: "Once the pilot cohort has a rhythm, expand to the full program. Aggregate competency data starts flowing to your Competence Committee from real verbal encounters.",
+    title: "Review the block, decide on scale",
+    body: "At the end of the block we share completion rates, time-to-feedback, and resident and preceptor feedback. If the numbers move, expand to the full program.",
+  },
+];
+
+const pilotMetrics = [
+  {
+    label: "Assessment completion rate",
+    body: "How many encounters resulted in a finalized assessment, before vs during the pilot.",
+  },
+  {
+    label: "Time from encounter to documented feedback",
+    body: "Median hours between the conversation and a structured assessment landing in your system.",
+  },
+  {
+    label: "Words of narrative feedback per assessment",
+    body: "A simple proxy for how rich the documented feedback is, compared to baseline.",
+  },
+  {
+    label: "Preceptor and resident satisfaction",
+    body: "Short end-of-block survey covering perceived burden, usefulness, and willingness to keep using it.",
   },
 ];
 
@@ -78,7 +97,8 @@ export default function ForProgramsPage() {
             Verbal feedback already happens. Preceptors and trainees talk after
             almost every encounter. Debrief preserves those conversations and
             turns them into the formal assessment record your program needs,
-            without adding a new step for supervisors.
+            reducing the documentation burden for preceptors without adding a
+            new step to their day.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
@@ -176,8 +196,13 @@ export default function ForProgramsPage() {
               id="rollout-heading"
               className="font-[family-name:var(--font-display)] text-[1.75rem] leading-[1.2] text-foreground sm:text-[2rem]"
             >
-              How a program rolls it out.
+              A one-block pilot.
             </h2>
+            <p className="mt-4 max-w-[640px] text-base leading-relaxed text-muted">
+              The pilot is scoped to a single rotation block (about one month).
+              That gives a clean before-and-after window without committing the
+              full program.
+            </p>
             <ol
               className="mt-10 grid gap-6 sm:grid-cols-3"
               aria-label="Rollout steps"
@@ -202,6 +227,37 @@ export default function ForProgramsPage() {
                 </li>
               ))}
             </ol>
+
+            <div className="mt-12">
+              <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted">
+                What we measure during the block
+              </p>
+              <h3 className="font-[family-name:var(--font-display)] text-[1.25rem] leading-[1.25] text-foreground sm:text-[1.5rem]">
+                A handful of metrics, against your own baseline.
+              </h3>
+              <ul
+                className="mt-6 grid gap-4 sm:grid-cols-2"
+                aria-label="Pilot metrics"
+              >
+                {pilotMetrics.map((metric) => (
+                  <li
+                    key={metric.label}
+                    className="rounded-[var(--radius-lg)] border border-border bg-background p-5"
+                  >
+                    <p className="text-sm font-semibold text-foreground">
+                      {metric.label}
+                    </p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                      {metric.body}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-5 text-sm text-muted">
+                We share the readout with the program at the end of the block.
+                You decide whether to scale.
+              </p>
+            </div>
           </div>
         </section>
 
