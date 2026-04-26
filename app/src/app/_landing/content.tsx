@@ -707,12 +707,12 @@ export function LandingContent({
                   className="rounded-[var(--radius-lg)] border border-border p-5"
                 >
                   <div
-                    className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-accent-light text-accent"
+                    className="text-accent [&_svg]:h-5 [&_svg]:w-5"
                     aria-hidden="true"
                   >
                     {feature.icon}
                   </div>
-                  <h3 className="mt-4 text-base font-semibold text-foreground">
+                  <h3 className="mt-3 text-base font-semibold text-foreground">
                     {feature.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted">
