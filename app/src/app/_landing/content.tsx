@@ -180,7 +180,7 @@ const features = [
 function RecordMockup() {
   return (
     <div
-      className="mx-auto mt-5 w-44 rounded-[var(--radius-lg)] border border-border bg-background p-4 shadow-sm"
+      className="mx-auto mt-5 w-full max-w-[260px] rounded-[var(--radius-lg)] border border-border bg-background p-4 shadow-sm"
       aria-hidden="true"
     >
       <div className="flex flex-col items-center gap-2.5">
