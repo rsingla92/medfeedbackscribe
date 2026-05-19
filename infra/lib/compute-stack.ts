@@ -1,126 +1,121 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as sources from 'aws-cdk-lib/aws-lambda-event-sources';
-import * as apprunner from 'aws-cdk-lib/aws-apprunner';
-import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
 import { DebriefDataStack } from './data-stack';
 
 interface DebriefComputeStackProps extends cdk.StackProps {
   dataStack: DebriefDataStack;
-  /**
-   * GitHub repo in `org/repo` form. Used as the `sub` claim filter on the
-   * GitHub Actions OIDC deploy role. MUST be explicit — wildcards or the
-   * literal `REPO_PLACEHOLDER` will cause synth to fail. Pass via
-   * `infra/bin/debrief.ts` (typically from the GITHUB_REPO env var).
-   */
-  githubRepo?: string;
 }
 
-const SES_DOMAIN = 'debrief.whitecoatprep.com';
-const SES_FROM_EMAIL = `noreply@${SES_DOMAIN}`;
-
 /**
- * Debrief compute-layer stack.
+ * Debrief compute-layer stack — Plan B (Fargate + ALB).
  *
- * Stateless resources — safe to destroy and re-create. Depends on
- * DebriefDataStack for VPC, KMS, RDS secret, and buckets.
+ * Stateless resources, safe to destroy and re-create. Depends on
+ * DebriefDataStack for VPC, KMS, RDS secret, recordings bucket, SES.
  *
- * IMPORTANT: Replace REPO_PLACEHOLDER in the GitHub OIDC role below with
- * the actual owner/repo string before deploying. See PREREQUISITES.md.
+ * Pieces:
+ *   - SQS pipeline queue + DLQ (KMS-encrypted)
+ *   - Lambda pipeline worker (VPC-attached, private-with-egress)
+ *   - ECR repository for the Next.js container image
+ *   - ECS Fargate cluster + task definition + service
+ *   - ALB (internet-facing) with HTTPS listener + ACM cert for
+ *     app.debriefmd.ca, validated via DNS CNAME in Squarespace
+ *
+ * The GitHub OIDC provider + deploy role live in DebriefBootstrapStack so
+ * the CI/CD identity exists before the compute stack is ever deployed.
+ *
+ * WAF intentionally omitted — add as a separate construct + association
+ * once we have real traffic worth filtering.
  */
 export class DebriefComputeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: DebriefComputeStackProps) {
     super(scope, id, props);
 
-    // ====================================================================
-    // 0. Synth-time guard: GitHub repo identity must be explicit.
-    //    Wildcards in the OIDC `sub` claim would let any GitHub repo in the
-    //    world assume the deploy role. Refuse to synth without a real value.
-    // ====================================================================
-    const githubRepo = props?.githubRepo ?? 'REPO_PLACEHOLDER';
-    if (githubRepo === 'REPO_PLACEHOLDER' || githubRepo.includes('*')) {
-      throw new Error(
-        'DebriefComputeStack: githubRepo must be explicit like "org/repo". ' +
-        'Pass it in via stack props (infra/bin/debrief.ts) — wildcards and the ' +
-        'placeholder are refused to prevent unauthorized GitHub repos from ' +
-        'assuming the deploy role.'
-      );
-    }
-
     const { dataStack } = props;
-    const { kmsKey, vpc, database, recordingsBucket, dbSecurityGroup } = dataStack;
+    const {
+      vpc,
+      database,
+      dbSecurityGroup,
+      sesDomain,
+      sesFromEmail,
+      appHostname,
+    } = dataStack;
 
-    // SES identity ARN — scope IAM grants down from `Resource: '*'` to the
-    // single domain identity we own. `ses:FromAddress` condition further
-    // restricts the From address (defense in depth).
-    const sesIdentityArn = `arn:aws:ses:${this.region}:${this.account}:identity/${SES_DOMAIN}`;
-
-    // ====================================================================
-    // 1. SQS queues (main + DLQ), KMS-encrypted.
-    // ====================================================================
-    const dlq = new sqs.Queue(this, 'PipelineDlq', {
-      queueName: 'debrief-pipeline-dlq',
-      encryption: sqs.QueueEncryption.KMS,
-      encryptionMasterKey: kmsKey,
-      retentionPeriod: cdk.Duration.days(14),
-      enforceSSL: true,
+    // Cross-stack resources are imported by attributes / ARN so that
+    // grantX() calls only mutate the consumer's IAM policy, not the
+    // source resource's resource policy. The latter would introduce
+    // cycles because grants would make the data stack depend on
+    // compute-stack role ARNs while compute already depends on data.
+    //
+    // The data stack's KMS key has an account-root admin policy, so IAM
+    // grants on these imported handles are sufficient — consumers gate
+    // access via their own IAM policy, not via the key/queue/bucket
+    // resource policies.
+    const kmsKey = kms.Key.fromKeyArn(this, 'PhiKeyImport', dataStack.kmsKey.keyArn);
+    const queue = sqs.Queue.fromQueueAttributes(this, 'PipelineQueueImport', {
+      queueArn: dataStack.pipelineQueue.queueArn,
+      queueUrl: dataStack.pipelineQueue.queueUrl,
+      queueName: dataStack.pipelineQueue.queueName,
+      keyArn: dataStack.kmsKey.keyArn,
+    });
+    const recordingsBucket = s3.Bucket.fromBucketAttributes(this, 'RecordingsBucketImport', {
+      bucketArn: dataStack.recordingsBucket.bucketArn,
+      bucketName: dataStack.recordingsBucket.bucketName,
+      encryptionKey: kmsKey,
+    });
+    const dbSecret = secretsmanager.Secret.fromSecretAttributes(this, 'DbSecretImport', {
+      secretCompleteArn: dataStack.database.secret!.secretArn,
+      encryptionKey: kmsKey,
     });
 
-    const queue = new sqs.Queue(this, 'PipelineQueue', {
-      queueName: 'debrief-pipeline-queue',
-      encryption: sqs.QueueEncryption.KMS,
-      encryptionMasterKey: kmsKey,
-      retentionPeriod: cdk.Duration.days(14),
-      // Pipeline can run up to 300s; 360s gives buffer over that.
-      visibilityTimeout: cdk.Duration.seconds(360),
-      enforceSSL: true,
-      deadLetterQueue: {
-        queue: dlq,
-        maxReceiveCount: 3,
-      },
-    });
+    // Scope SES IAM grants to the single domain identity we own. The
+    // ses:FromAddress condition pins the From address (defense in depth).
+    const sesIdentityArn = `arn:aws:ses:${this.region}:${this.account}:identity/${sesDomain}`;
 
-    // ====================================================================
-    // 2. S3 → SQS notification on ObjectCreated:Put.
-    //    addEventNotification grants the bucket SendMessage + kms:GenerateDataKey.
-    // ====================================================================
-    recordingsBucket.addEventNotification(
-      cdk.aws_s3.EventType.OBJECT_CREATED_PUT,
-      new s3n.SqsDestination(queue),
-    );
+    // ────────────────────────────────────────────────────────────────────
+    // 2. Runtime secrets imported by name. You create these manually in
+    //    the AWS console (or via CLI) before the first deploy. The names
+    //    are stable contracts; values rotate independently.
+    // ────────────────────────────────────────────────────────────────────
+    const authSecret = secretsmanager.Secret.fromSecretNameV2(this, 'AuthSecret', 'debrief/auth-secret');
+    const googleOauthSecret = secretsmanager.Secret.fromSecretNameV2(this, 'GoogleOauthSecret', 'debrief/google-oauth');
+    const gcpSaSecret = secretsmanager.Secret.fromSecretNameV2(this, 'GcpSaSecret', 'debrief/gcp-sa');
 
-    // ====================================================================
+    // ────────────────────────────────────────────────────────────────────
     // 3. Lambda pipeline worker.
-    // ====================================================================
-    // Security group for the worker — egress-only. RDS ingress added below.
+    // ────────────────────────────────────────────────────────────────────
     const lambdaSg = new ec2.SecurityGroup(this, 'LambdaSg', {
       vpc,
       description: 'Debrief pipeline Lambda — egress only',
       allowAllOutbound: true,
     });
+    // RDS ingress rules are created here (compute stack) rather than via
+    // dbSecurityGroup.addIngressRule(...) so the CFN resource lives in
+    // the compute stack. Adding it on dbSecurityGroup's side would make
+    // the data stack reference compute-stack SG IDs — cycle.
+    new ec2.CfnSecurityGroupIngress(this, 'LambdaToRdsIngress', {
+      groupId: dbSecurityGroup.securityGroupId,
+      sourceSecurityGroupId: lambdaSg.securityGroupId,
+      ipProtocol: 'tcp',
+      fromPort: 5432,
+      toPort: 5432,
+      description: 'Debrief pipeline Lambda → RDS',
+    });
 
-    // Allow the Lambda SG to reach the RDS SG on 5432.
-    dbSecurityGroup.addIngressRule(
-      lambdaSg,
-      ec2.Port.tcp(5432),
-      'Debrief pipeline Lambda → RDS',
-    );
-
-    // Phase 2: swapped `lambda.Function` + `Code.fromAsset` for `NodejsFunction`
-    // so esbuild bundles the TypeScript source automatically. The asset-from-dir
-    // approach uploaded raw source without dependencies; NodejsFunction resolves
-    // imports, tree-shakes AWS SDK (provided by the Node 20 runtime), and emits
-    // a single minified handler. Entry points at handler.ts in the Phase 2
-    // package.
     const pipelineFn = new lambdaNodejs.NodejsFunction(this, 'PipelineWorker', {
       functionName: 'debrief-pipeline-worker',
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -129,15 +124,11 @@ export class DebriefComputeStack extends cdk.Stack {
       entry: path.join(__dirname, '..', 'lambda', 'pipeline', 'handler.ts'),
       handler: 'handler',
       projectRoot: path.join(__dirname, '..', 'lambda', 'pipeline'),
-      depsLockFilePath: path.join(
-        __dirname, '..', 'lambda', 'pipeline', 'package.json',
-      ),
+      depsLockFilePath: path.join(__dirname, '..', 'lambda', 'pipeline', 'package.json'),
       bundling: {
         target: 'node20',
         format: lambdaNodejs.OutputFormat.CJS,
         sourceMap: true,
-        // AWS SDK v3 is present in the Node 20 Lambda runtime; exclude to keep
-        // the bundle small. `postgres` and `@google-cloud/vertexai` are bundled.
         externalModules: ['@aws-sdk/*'],
       },
       vpc,
@@ -147,28 +138,23 @@ export class DebriefComputeStack extends cdk.Stack {
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
         AWS_REGION_DEBRIEF: 'ca-central-1',
-        RDS_SECRET_ARN: database.secret!.secretArn,
-        DB_SECRET_ARN: database.secret!.secretArn,
+        RDS_SECRET_ARN: dbSecret.secretArn,
+        DB_SECRET_ARN: dbSecret.secretArn,
         RDS_ENDPOINT: database.dbInstanceEndpointAddress,
         RECORDINGS_BUCKET: recordingsBucket.bucketName,
         KMS_KEY_ARN: kmsKey.keyArn,
         SQS_QUEUE_URL: queue.queueUrl,
-        // Vertex AI config — set these via `cdk deploy --context` or console:
-        //   GCP_PROJECT_ID:     Vertex AI project id
-        //   GCP_SA_SECRET_ARN:  Secrets Manager ARN holding the SA JSON
-        //   SES_FROM_EMAIL:     optional override
-        //   PROGRAM_ADMIN_EMAIL: optional BCC
+        SES_FROM_EMAIL: sesFromEmail,
+        SES_APP_URL: `https://${appHostname}`,
+        GCP_SA_SECRET_ARN: gcpSaSecret.secretArn,
       },
     });
 
-    // IAM grants.
-    database.secret!.grantRead(pipelineFn);
+    dbSecret.grantRead(pipelineFn);
     recordingsBucket.grantRead(pipelineFn);
     kmsKey.grantDecrypt(pipelineFn);
     queue.grantConsumeMessages(pipelineFn);
-    // SES send permissions (for post-processing email notifications).
-    // Scoped to our domain identity ARN; FromAddress condition pins the
-    // sender. Was Resource: '*' previously.
+    gcpSaSecret.grantRead(pipelineFn);
     pipelineFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendBulkEmail'],
@@ -176,13 +162,12 @@ export class DebriefComputeStack extends cdk.Stack {
         conditions: {
           StringEquals: {
             'aws:SourceAccount': this.account,
-            'ses:FromAddress': SES_FROM_EMAIL,
+            'ses:FromAddress': sesFromEmail,
           },
         },
       }),
     );
 
-    // Event source — SQS → Lambda, batch size 1 for prototype.
     pipelineFn.addEventSource(
       new sources.SqsEventSource(queue, {
         batchSize: 1,
@@ -190,13 +175,13 @@ export class DebriefComputeStack extends cdk.Stack {
       }),
     );
 
-    // ====================================================================
-    // 4. ECR repository for the Next.js container image.
-    // ====================================================================
+    // ────────────────────────────────────────────────────────────────────
+    // 4. ECR — Next.js container image registry.
+    // ────────────────────────────────────────────────────────────────────
     const ecrRepo = new ecr.Repository(this, 'WebEcrRepo', {
       repositoryName: 'debrief-web',
       imageScanOnPush: true,
-      imageTagMutability: ecr.TagMutability.MUTABLE, // prototype — using :latest
+      imageTagMutability: ecr.TagMutability.MUTABLE,
       encryption: ecr.RepositoryEncryption.KMS,
       encryptionKey: kmsKey,
       lifecycleRules: [
@@ -206,300 +191,253 @@ export class DebriefComputeStack extends cdk.Stack {
           rulePriority: 1,
         },
       ],
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // stateless — safe to recreate
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // ====================================================================
-    // 5. App Runner — Next.js web service from ECR.
-    //    Uses L1 CfnService because the L2 `aws-apprunner-alpha` module is
-    //    experimental and App Runner's VPC connector shape is stable in L1.
-    // ====================================================================
-
-    // SG for App Runner VPC connector (reaches RDS).
-    const appRunnerSg = new ec2.SecurityGroup(this, 'AppRunnerSg', {
+    // ────────────────────────────────────────────────────────────────────
+    // 5. ECS Fargate cluster + service.
+    // ────────────────────────────────────────────────────────────────────
+    const cluster = new ecs.Cluster(this, 'WebCluster', {
+      clusterName: 'debrief-web',
       vpc,
-      description: 'Debrief App Runner VPC connector — egress only',
-      allowAllOutbound: true,
-    });
-    dbSecurityGroup.addIngressRule(
-      appRunnerSg,
-      ec2.Port.tcp(5432),
-      'Debrief App Runner → RDS',
-    );
-
-    const vpcConnector = new apprunner.CfnVpcConnector(this, 'AppRunnerVpcConnector', {
-      vpcConnectorName: 'debrief-web-connector',
-      subnets: vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      }).subnetIds,
-      securityGroups: [appRunnerSg.securityGroupId],
+      containerInsights: true,
     });
 
-    // Instance role — what the running container can do.
-    const instanceRole = new iam.Role(this, 'AppRunnerInstanceRole', {
-      assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
-      description: 'Debrief App Runner instance role',
+    // Task role — what the running container can do. Equivalent to the
+    // previous App Runner "instance role".
+    const taskRole = new iam.Role(this, 'FargateTaskRole', {
+      roleName: 'debrief-fargate-task',
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      description: 'Debrief Fargate task role — perms granted to the running container.',
     });
-    database.secret!.grantRead(instanceRole);
-    recordingsBucket.grantReadWrite(instanceRole); // for presigned PUT generation
-    kmsKey.grantEncryptDecrypt(instanceRole);
-    queue.grantSendMessages(instanceRole);
-    instanceRole.addToPolicy(
+    dbSecret.grantRead(taskRole);
+    recordingsBucket.grantReadWrite(taskRole);
+    kmsKey.grantEncryptDecrypt(taskRole);
+    queue.grantSendMessages(taskRole);
+    authSecret.grantRead(taskRole);
+    googleOauthSecret.grantRead(taskRole);
+    taskRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendBulkEmail'],
         resources: [sesIdentityArn],
         conditions: {
           StringEquals: {
             'aws:SourceAccount': this.account,
-            'ses:FromAddress': SES_FROM_EMAIL,
+            'ses:FromAddress': sesFromEmail,
           },
         },
       }),
     );
-    // Bedrock grant intentionally removed: the pipeline runs on Vertex AI
-    // (Google) in northamerica-northeast1, not Bedrock. If we ever flip to
-    // Bedrock for any model, re-add a scoped grant naming the specific model
-    // ARN — never `Resource: '*'`.
 
-    // Access role — what App Runner uses to pull the ECR image.
-    const accessRole = new iam.Role(this, 'AppRunnerAccessRole', {
-      assumedBy: new iam.ServicePrincipal('build.apprunner.amazonaws.com'),
-      description: 'Debrief App Runner ECR pull role',
+    // Execution role — what ECS itself uses to pull the image and write logs.
+    const executionRole = new iam.Role(this, 'FargateExecutionRole', {
+      roleName: 'debrief-fargate-execution',
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      description: 'Debrief Fargate execution role — pulls ECR images, writes CW logs, resolves secrets.',
       managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSAppRunnerServicePolicyForECRAccess'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
       ],
     });
+    // Execution role pulls secret values at task-start time before the
+    // container even runs, so it needs read access too (separate from the
+    // task role which is used by the running container's SDK calls).
+    authSecret.grantRead(executionRole);
+    googleOauthSecret.grantRead(executionRole);
+    kmsKey.grantDecrypt(executionRole);
 
-    const appRunnerService = new apprunner.CfnService(this, 'AppRunnerService', {
+    const taskLogGroup = new logs.LogGroup(this, 'WebTaskLogs', {
+      logGroupName: '/aws/ecs/debrief-web',
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const taskDef = new ecs.FargateTaskDefinition(this, 'WebTaskDef', {
+      family: 'debrief-web',
+      cpu: 512,        // 0.5 vCPU
+      memoryLimitMiB: 1024, // 1 GB
+      taskRole,
+      executionRole,
+      runtimePlatform: {
+        cpuArchitecture: ecs.CpuArchitecture.X86_64,
+        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+      },
+    });
+
+    taskDef.addContainer('web', {
+      containerName: 'web',
+      image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
+      portMappings: [{ containerPort: 3000, protocol: ecs.Protocol.TCP }],
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: 'web',
+        logGroup: taskLogGroup,
+      }),
+      environment: {
+        NODE_ENV: 'production',
+        AWS_REGION_DEBRIEF: 'ca-central-1',
+        RDS_SECRET_ARN: dbSecret.secretArn,
+        RDS_ENDPOINT: database.dbInstanceEndpointAddress,
+        RECORDINGS_BUCKET: recordingsBucket.bucketName,
+        KMS_KEY_ARN: kmsKey.keyArn,
+        SQS_QUEUE_URL: queue.queueUrl,
+        SES_FROM_EMAIL: sesFromEmail,
+        AUTH_URL: `https://${appHostname}`,
+      },
+      // Secrets pulled at container-start time and injected as env vars.
+      // Auth.js reads AUTH_SECRET; the email provider reads GOOGLE_CLIENT_ID/SECRET.
+      secrets: {
+        AUTH_SECRET: ecs.Secret.fromSecretsManager(authSecret),
+        GOOGLE_CLIENT_ID: ecs.Secret.fromSecretsManager(googleOauthSecret, 'clientId'),
+        GOOGLE_CLIENT_SECRET: ecs.Secret.fromSecretsManager(googleOauthSecret, 'clientSecret'),
+      },
+      // Container-level health check (in addition to ALB target-group
+      // health check). Helps Fargate replace a wedged task even if it's
+      // still serving 200s on /api/health.
+      healthCheck: {
+        command: ['CMD-SHELL', 'wget -qO- http://localhost:3000/api/health || exit 1'],
+        interval: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(5),
+        retries: 3,
+        startPeriod: cdk.Duration.seconds(60),
+      },
+    });
+
+    // ────────────────────────────────────────────────────────────────────
+    // 6. ALB + HTTPS listener + ACM cert.
+    // ────────────────────────────────────────────────────────────────────
+    const albSg = new ec2.SecurityGroup(this, 'AlbSg', {
+      vpc,
+      description: 'Debrief ALB — 443 from internet',
+      allowAllOutbound: true,
+    });
+    albSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), 'HTTPS from internet');
+    albSg.addIngressRule(ec2.Peer.anyIpv6(), ec2.Port.tcp(443), 'HTTPS from internet (IPv6)');
+
+    const fargateSg = new ec2.SecurityGroup(this, 'FargateSg', {
+      vpc,
+      description: 'Debrief Fargate task — 3000 from ALB only',
+      allowAllOutbound: true,
+    });
+    fargateSg.addIngressRule(albSg, ec2.Port.tcp(3000), 'ALB → Fargate task');
+    new ec2.CfnSecurityGroupIngress(this, 'FargateToRdsIngress', {
+      groupId: dbSecurityGroup.securityGroupId,
+      sourceSecurityGroupId: fargateSg.securityGroupId,
+      ipProtocol: 'tcp',
+      fromPort: 5432,
+      toPort: 5432,
+      description: 'Debrief Fargate task → RDS',
+    });
+
+    const alb = new elbv2.ApplicationLoadBalancer(this, 'WebAlb', {
+      loadBalancerName: 'debrief-web-alb',
+      vpc,
+      internetFacing: true,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      securityGroup: albSg,
+      // Drop invalid HTTP headers at the LB rather than passing them to
+      // Node, which has a history of header-handling CVEs.
+      dropInvalidHeaderFields: true,
+    });
+
+    // ACM cert for app.debriefmd.ca — DNS-validated via Squarespace CNAME.
+    // The DNS validation records are emitted as part of CloudFormation's
+    // certificate resource events; you read them from the AWS console
+    // (Certificate Manager) during the first deploy. Without the CNAME in
+    // DNS, this resource will sit in PENDING_VALIDATION for ~30 min and
+    // CloudFormation will eventually time out.
+    const cert = new acm.Certificate(this, 'AppCert', {
+      domainName: appHostname,
+      validation: acm.CertificateValidation.fromDns(),
+    });
+
+    const httpsListener = alb.addListener('HttpsListener', {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      certificates: [cert],
+      sslPolicy: elbv2.SslPolicy.TLS13_RES,
+    });
+
+    // Redirect HTTP → HTTPS at the LB so health-check tooling and DNS
+    // pre-validation pokes never go through unencrypted.
+    alb.addListener('HttpRedirect', {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      defaultAction: elbv2.ListenerAction.redirect({
+        protocol: 'HTTPS',
+        port: '443',
+        permanent: true,
+      }),
+    });
+
+    const fargateService = new ecs.FargateService(this, 'WebService', {
       serviceName: 'debrief-web',
-      sourceConfiguration: {
-        authenticationConfiguration: {
-          accessRoleArn: accessRole.roleArn,
-        },
-        autoDeploymentsEnabled: true, // redeploy on ECR push to :latest
-        imageRepository: {
-          imageRepositoryType: 'ECR',
-          imageIdentifier: `${ecrRepo.repositoryUri}:latest`,
-          imageConfiguration: {
-            port: '3000',
-            runtimeEnvironmentVariables: [
-              { name: 'AWS_REGION_DEBRIEF', value: 'ca-central-1' },
-              { name: 'RDS_SECRET_ARN', value: database.secret!.secretArn },
-              { name: 'RDS_ENDPOINT', value: database.dbInstanceEndpointAddress },
-              { name: 'RECORDINGS_BUCKET', value: recordingsBucket.bucketName },
-              { name: 'KMS_KEY_ARN', value: kmsKey.keyArn },
-              { name: 'SQS_QUEUE_URL', value: queue.queueUrl },
-              // Auth secrets (NextAuth, Resend, Vertex creds) are added in
-              // Phase 2 via Secrets Manager references.
-            ],
-          },
-        },
-      },
-      instanceConfiguration: {
-        cpu: '1 vCPU',
-        memory: '2 GB',
-        instanceRoleArn: instanceRole.roleArn,
-      },
-      healthCheckConfiguration: {
-        protocol: 'HTTP',
+      cluster,
+      taskDefinition: taskDef,
+      desiredCount: 1,
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+      // Tasks live in private subnets and reach AWS APIs through the NAT.
+      // ALB does the only ingress, on Fargate SG port 3000.
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      assignPublicIp: false,
+      securityGroups: [fargateSg],
+      healthCheckGracePeriod: cdk.Duration.seconds(90),
+      // Roll one task at a time. With desiredCount=1 + minHealthy=100% +
+      // maxHealthy=200%, ECS spins up the new task, waits for it to pass
+      // health checks, then drains the old one. Zero-downtime deploys.
+      enableExecuteCommand: true,
+    });
+
+    httpsListener.addTargets('WebTarget', {
+      targetGroupName: 'debrief-web-tg',
+      port: 3000,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      targets: [fargateService],
+      deregistrationDelay: cdk.Duration.seconds(15),
+      healthCheck: {
         path: '/api/health',
-        interval: 10,
-        timeout: 5,
-        healthyThreshold: 1,
-        unhealthyThreshold: 5,
+        port: '3000',
+        protocol: elbv2.Protocol.HTTP,
+        healthyHttpCodes: '200',
+        interval: cdk.Duration.seconds(15),
+        timeout: cdk.Duration.seconds(5),
+        healthyThresholdCount: 2,
+        unhealthyThresholdCount: 3,
       },
-      networkConfiguration: {
-        egressConfiguration: {
-          egressType: 'VPC',
-          vpcConnectorArn: vpcConnector.attrVpcConnectorArn,
-        },
-        ingressConfiguration: {
-          isPubliclyAccessible: true,
-        },
-      },
-      // NOTE: App Runner auto-scaling configuration is created separately
-      // via CfnAutoScalingConfiguration. For prototype we rely on the default
-      // auto-scaling config (min 1, max 25); tune to 1–2 max post-cutover by
-      // referencing a custom AutoScalingConfigurationArn here.
     });
 
-    appRunnerService.node.addDependency(vpcConnector);
-    appRunnerService.node.addDependency(ecrRepo);
-
-    // ====================================================================
-    // 5b. WAFv2 — REGIONAL Web ACL associated with the App Runner service.
-    //     Two rate-based rules: a global per-IP ceiling, and a stricter
-    //     scope-down rule for the magic-link auth endpoint to slow down
-    //     credential-stuffing / enumeration. AWS WAF rate limits are evaluated
-    //     over a rolling 5-minute window.
-    // ====================================================================
-    const wafAcl = new wafv2.CfnWebACL(this, 'DebriefWebAcl', {
-      scope: 'REGIONAL',
-      defaultAction: { allow: {} },
-      visibilityConfig: {
-        cloudWatchMetricsEnabled: true,
-        metricName: 'DebriefWebAcl',
-        sampledRequestsEnabled: true,
-      },
-      rules: [
-        {
-          name: 'RateLimitPerIp',
-          priority: 1,
-          statement: {
-            rateBasedStatement: { limit: 1000, aggregateKeyType: 'IP' },
-          },
-          action: { block: {} },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: 'RateLimit',
-            sampledRequestsEnabled: true,
-          },
-        },
-        {
-          name: 'MagicLinkRateLimit',
-          priority: 2,
-          statement: {
-            rateBasedStatement: {
-              limit: 100,
-              aggregateKeyType: 'IP',
-              scopeDownStatement: {
-                byteMatchStatement: {
-                  fieldToMatch: { uriPath: {} },
-                  positionalConstraint: 'STARTS_WITH',
-                  searchString: '/api/auth/signin/email',
-                  textTransformations: [{ priority: 0, type: 'NONE' }],
-                },
-              },
-            },
-          },
-          action: { block: {} },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: 'MagicLinkRateLimit',
-            sampledRequestsEnabled: true,
-          },
-        },
-      ],
-    });
-
-    const wafAssociation = new wafv2.CfnWebACLAssociation(this, 'DebriefWebAclAssoc', {
-      // App Runner exposes attrServiceArn for WAF association — confirmed
-      // supported by AWS::WAFv2::WebACLAssociation since Apr 2023.
-      resourceArn: appRunnerService.attrServiceArn,
-      webAclArn: wafAcl.attrArn,
-    });
-    wafAssociation.node.addDependency(appRunnerService);
-
-    // ====================================================================
-    // 6. GitHub Actions OIDC deploy role.
-    // ====================================================================
-    // The OIDC provider is account-wide. Check if it already exists (shared
-    // with WhiteCoatPrep) before creating. If the user has already created
-    // the provider elsewhere, comment out this construct and import it.
-    const githubOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubOidcProvider', {
-      url: 'https://token.actions.githubusercontent.com',
-      clientIds: ['sts.amazonaws.com'],
-      // Thumbprints managed by AWS — empty array is accepted for GitHub.
-    });
-
-    // `githubRepo` is provided via stack props and validated at the top of
-    // this constructor — REPO_PLACEHOLDER and wildcards throw at synth.
-    const githubDeployRole = new iam.Role(this, 'GitHubDeployRole', {
-      roleName: 'debrief-github-deploy',
-      description: 'Debrief CI/CD — assumed by GitHub Actions via OIDC',
-      assumedBy: new iam.FederatedPrincipal(
-        githubOidcProvider.openIdConnectProviderArn,
-        {
-          StringEquals: {
-            'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-          },
-          StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${githubRepo}:*`,
-          },
-        },
-        'sts:AssumeRoleWithWebIdentity',
-      ),
-      maxSessionDuration: cdk.Duration.hours(1),
-    });
-
-    // ECR push.
-    ecrRepo.grantPullPush(githubDeployRole);
-    githubDeployRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['ecr:GetAuthorizationToken'],
-        resources: ['*'],
-      }),
-    );
-    // App Runner update (trigger deployment + describe).
-    githubDeployRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'apprunner:StartDeployment',
-          'apprunner:DescribeService',
-          'apprunner:UpdateService',
-          'apprunner:ListServices',
-        ],
-        resources: [appRunnerService.attrServiceArn],
-      }),
-    );
-    // Lambda function code update.
-    githubDeployRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'lambda:UpdateFunctionCode',
-          'lambda:UpdateFunctionConfiguration',
-          'lambda:GetFunction',
-          'lambda:PublishVersion',
-        ],
-        resources: [pipelineFn.functionArn],
-      }),
-    );
-    // Future `cdk deploy` from CI — read CDK bootstrap.
-    githubDeployRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['ssm:GetParameter'],
-        resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/cdk-bootstrap/*`],
-      }),
-    );
-    githubDeployRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['sts:AssumeRole'],
-        resources: [`arn:aws:iam::${this.account}:role/cdk-*`],
-      }),
-    );
-
-    // ====================================================================
+    // ────────────────────────────────────────────────────────────────────
     // 7. Outputs.
-    // ====================================================================
-    new cdk.CfnOutput(this, 'SqsQueueUrl', {
-      value: queue.queueUrl,
-      exportName: 'Debrief-SqsQueueUrl',
-    });
-    new cdk.CfnOutput(this, 'SqsDlqUrl', {
-      value: dlq.queueUrl,
-      exportName: 'Debrief-SqsDlqUrl',
-    });
-    new cdk.CfnOutput(this, 'AppRunnerServiceUrl', {
-      value: `https://${appRunnerService.attrServiceUrl}`,
-      description: 'Debrief web service URL (App Runner)',
-      exportName: 'Debrief-AppRunnerUrl',
-    });
-    new cdk.CfnOutput(this, 'AppRunnerServiceArn', {
-      value: appRunnerService.attrServiceArn,
-      exportName: 'Debrief-AppRunnerArn',
-    });
+    // ────────────────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, 'EcrRepositoryUri', {
       value: ecrRepo.repositoryUri,
+      description: 'Push :latest here to trigger a Fargate redeploy.',
       exportName: 'Debrief-EcrUri',
+    });
+    new cdk.CfnOutput(this, 'EcsClusterName', {
+      value: cluster.clusterName,
+      exportName: 'Debrief-EcsClusterName',
+    });
+    new cdk.CfnOutput(this, 'EcsServiceName', {
+      value: fargateService.serviceName,
+      exportName: 'Debrief-EcsServiceName',
+    });
+    new cdk.CfnOutput(this, 'AlbDnsName', {
+      value: alb.loadBalancerDnsName,
+      description: `Point ${appHostname} CNAME here in Squarespace DNS.`,
+      exportName: 'Debrief-AlbDnsName',
+    });
+    new cdk.CfnOutput(this, 'AppUrl', {
+      value: `https://${appHostname}`,
+      exportName: 'Debrief-AppUrl',
+    });
+    new cdk.CfnOutput(this, 'CertificateArn', {
+      value: cert.certificateArn,
+      description: 'ACM cert — DNS validation records visible in AWS Certificate Manager console.',
+      exportName: 'Debrief-CertificateArn',
     });
     new cdk.CfnOutput(this, 'LambdaFunctionName', {
       value: pipelineFn.functionName,
       exportName: 'Debrief-LambdaName',
-    });
-    new cdk.CfnOutput(this, 'GitHubDeployRoleArn', {
-      value: githubDeployRole.roleArn,
-      description: 'Use in GitHub Actions: aws-actions/configure-aws-credentials role-to-assume',
-      exportName: 'Debrief-GhDeployRoleArn',
     });
   }
 }

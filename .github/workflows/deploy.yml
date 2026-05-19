@@ -1,23 +1,21 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Debrief web → AWS App Runner deploy pipeline
+# Debrief deploy pipeline (Plan B — Fargate + ALB).
 #
-# Triggered on push to master. Builds the Next.js container, pushes to ECR
-# (`debrief-web`), and waits for App Runner to finish rolling out the new
-# image. App Runner auto-deploys on every `:latest` push because the CDK sets
-# `autoDeploymentsEnabled: true` — no explicit StartDeployment call needed.
+# Triggered on push to master. End-to-end:
+#   1. Run unit tests (gate the deploy)
+#   2. Assume the GitHub OIDC role from DebriefBootstrapStack
+#   3. cdk deploy DebriefDataStack + DebriefComputeStack (idempotent)
+#   4. Build the Next.js container, push :latest + :${SHA} to ECR
+#   5. Force a new Fargate deployment, wait for service stable
+#   6. Smoke-test /api/health on the ALB
 #
-# ── Required GitHub repository secrets ──
-#   APPRUNNER_SERVICE_ARN  App Runner service ARN (CDK compute stack output)
-#   APPRUNNER_URL          App Runner service URL, no scheme
-#                          (e.g. abc123.ca-central-1.awsapprunner.com)
-#   ECR_REPOSITORY_URI     Full ECR repo URI (CDK compute stack output)
-#                          e.g. 687591846902.dkr.ecr.ca-central-1.amazonaws.com/debrief-web
+# Resource identifiers (ECR URI, ECS cluster/service, ALB DNS) are looked
+# up from CloudFormation outputs at runtime, so the only GitHub repo
+# secret needed is AWS_DEPLOY_ROLE_ARN. Everything else self-resolves.
 #
-# ── Required IAM ──
-#   OIDC role `debrief-github-deploy` (created by CDK compute stack) trusts
-#   this repo via GitHub Actions OIDC. Role ARN is hardcoded below — pull
-#   the canonical value from the CDK stack output and update if the account
-#   ID changes.
+# Required GitHub repo secret:
+#   AWS_DEPLOY_ROLE_ARN   ARN of the debrief-github-deploy role, output
+#                         by DebriefBootstrapStack on first deploy.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: deploy
@@ -37,14 +35,14 @@ concurrency:
 
 env:
   AWS_REGION: ca-central-1
-  # Hardcoded per the Phase 7 spec — CDK compute stack output for the
-  # `debrief-github-deploy` OIDC role. Update if the AWS account changes.
-  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::687591846902:role/debrief-github-deploy
+  DATA_STACK: DebriefDataStack
+  COMPUTE_STACK: DebriefComputeStack
+  GITHUB_REPO: ${{ github.repository }}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -60,24 +58,75 @@ jobs:
         with:
           bun-version: "1.1.42"
 
-      - name: Install dependencies
+      - name: Install app dependencies
         working-directory: app
         run: bun install --frozen-lockfile
 
-      # Gate the deploy on tests passing. continue-on-error defaults to false,
-      # so a failing test aborts the job before we touch ECR or App Runner.
-      - name: Run unit tests
+      - name: Run app unit tests
         working-directory: app
         run: bun run test
+
+      - name: Install infra dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: Install Lambda dependencies (for CDK nodejs bundling)
+        working-directory: infra/lambda/pipeline
+        run: npm ci
+
+      - name: Run Lambda unit tests
+        working-directory: infra/lambda/pipeline
+        run: npm test
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # CDK deploy is idempotent — only changed resources update.
+      # DebriefBootstrapStack is excluded; it's deployed once manually
+      # from CloudShell and self-references the CI/CD role.
+      - name: cdk deploy (data + compute)
+        working-directory: infra
+        env:
+          # Required by the bootstrap stack's synth-time guard. The other
+          # stacks don't read it but synth runs all three.
+          GITHUB_REPO: ${{ env.GITHUB_REPO }}
+        run: |
+          set -euo pipefail
+          npx cdk deploy \
+            "${{ env.DATA_STACK }}" \
+            "${{ env.COMPUTE_STACK }}" \
+            --require-approval never \
+            --concurrency 2
+
+      - name: Resolve stack outputs
+        id: outputs
+        run: |
+          set -euo pipefail
+          ECR_URI=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.COMPUTE_STACK }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='EcrRepositoryUri'].OutputValue" \
+            --output text)
+          CLUSTER=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.COMPUTE_STACK }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='EcsClusterName'].OutputValue" \
+            --output text)
+          SERVICE=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.COMPUTE_STACK }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='EcsServiceName'].OutputValue" \
+            --output text)
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.COMPUTE_STACK }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='AlbDnsName'].OutputValue" \
+            --output text)
+          echo "ecr_uri=$ECR_URI" >> "$GITHUB_OUTPUT"
+          echo "cluster=$CLUSTER" >> "$GITHUB_OUTPUT"
+          echo "service=$SERVICE" >> "$GITHUB_OUTPUT"
+          echo "alb_dns=$ALB_DNS" >> "$GITHUB_OUTPUT"
+
       - name: Login to Amazon ECR
-        id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
@@ -85,7 +134,7 @@ jobs:
 
       - name: Build and push container image
         env:
-          ECR_REPO: ${{ secrets.ECR_REPOSITORY_URI }}
+          ECR_REPO: ${{ steps.outputs.outputs.ecr_uri }}
         run: |
           set -euo pipefail
           docker buildx build \
@@ -97,44 +146,51 @@ jobs:
             -t "${ECR_REPO}:${GITHUB_SHA}" \
             ./app
 
-      # App Runner has autoDeploymentsEnabled: true (set by the CDK compute
-      # stack), so pushing a new image with the :latest tag automatically
-      # kicks off a deployment. No explicit `start-deployment` call needed.
-      - name: Wait for App Runner deployment to complete
+      # Fargate doesn't auto-redeploy on :latest the way App Runner did.
+      # --force-new-deployment makes ECS pull the freshly-tagged :latest
+      # and roll the service.
+      - name: Force new Fargate deployment
         env:
-          SERVICE_ARN: ${{ secrets.APPRUNNER_SERVICE_ARN }}
+          CLUSTER: ${{ steps.outputs.outputs.cluster }}
+          SERVICE: ${{ steps.outputs.outputs.service }}
         run: |
           set -euo pipefail
-          echo "Waiting for App Runner service to reach RUNNING state..."
-          # Poll every 15s, up to 10 minutes total.
-          for i in $(seq 1 40); do
-            status=$(aws apprunner describe-service \
-              --service-arn "$SERVICE_ARN" \
-              --region "$AWS_REGION" \
-              --query 'Service.Status' \
-              --output text)
-            echo "  [$i/40] status=$status"
-            case "$status" in
-              RUNNING)
-                echo "App Runner service is RUNNING."
-                exit 0
-                ;;
-              CREATE_FAILED|DELETED|DELETE_FAILED|PAUSED)
-                echo "App Runner entered terminal/failure state: $status" >&2
-                exit 1
-                ;;
-            esac
-            sleep 15
-          done
-          echo "Timed out after 10 minutes waiting for App Runner." >&2
-          exit 1
+          aws ecs update-service \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
+            --force-new-deployment \
+            --query 'service.deployments[0].id' \
+            --output text
 
-      - name: Smoke test /api/health
+      - name: Wait for service stable
         env:
-          APPRUNNER_URL: ${{ secrets.APPRUNNER_URL }}
+          CLUSTER: ${{ steps.outputs.outputs.cluster }}
+          SERVICE: ${{ steps.outputs.outputs.service }}
         run: |
           set -euo pipefail
-          # Give App Runner a few seconds to fully cut traffic over.
-          sleep 10
-          curl -fsS --max-time 15 "https://${APPRUNNER_URL}/api/health" | tee /tmp/health.json
-          grep -q '"status":"ok"' /tmp/health.json
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services "$SERVICE"
+          echo "ECS service reached steady state."
+
+      # Smoke test goes through the ALB DNS rather than the custom domain,
+      # so it works before app.debriefmd.ca's CNAME has been added to
+      # Squarespace. After DNS is set up, you can also reach this at
+      # https://app.debriefmd.ca/api/health.
+      - name: Smoke test /api/health (ALB direct)
+        env:
+          ALB_DNS: ${{ steps.outputs.outputs.alb_dns }}
+        run: |
+          set -euo pipefail
+          # Allow up to 60s for the first request to succeed — new Fargate
+          # tasks sometimes take a moment to register as healthy targets.
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 10 -k "https://${ALB_DNS}/api/health" -o /tmp/health.json; then
+              cat /tmp/health.json
+              grep -q '"status":"ok"' /tmp/health.json && exit 0
+            fi
+            echo "  [$i/12] health check not yet 200; retrying in 5s"
+            sleep 5
+          done
+          echo "Smoke test failed: /api/health did not return 200." >&2
+          exit 1
