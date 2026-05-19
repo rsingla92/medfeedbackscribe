@@ -22,7 +22,7 @@ import {
 } from "@aws-sdk/client-sesv2";
 import type { AssessmentNotificationOptions } from "./types.js";
 
-const DEFAULT_FROM = "Debrief <noreply@debrief.whitecoatprep.com>";
+const DEFAULT_FROM = "Debrief <noreply@debriefmd.ca>";
 
 let _sesClient: SESv2Client | null = null;
 function getSesClient(): SESv2Client {
@@ -108,7 +108,7 @@ export async function sendAssessmentNotification(
 
   const roleLabel = role === "preceptor" ? "Preceptor" : "Resident";
   const otherPerson = role === "preceptor" ? residentName : preceptorName;
-  const appUrl = process.env.SES_APP_URL ?? "https://debrief.whitecoatprep.com";
+  const appUrl = process.env.SES_APP_URL ?? "https://app.debriefmd.ca";
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
