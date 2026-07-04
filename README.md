@@ -1,4 +1,6 @@
-# Debrief
+# Debrief (archived)
+
+> **This repository is archived and no longer maintained.** It was an early build exploring an idea for voice-to-assessment tooling in medical education. Nothing here is deployed or actively developed. Domain and email references below use the placeholder `med-student-feedback-scribe.dev` and do not resolve to anything.
 
 **Talk first. Forms second.**
 
@@ -140,7 +142,7 @@ See [docs/DEPLOY-VERCEL.md](./docs/DEPLOY-VERCEL.md). Configured for Vercel Mont
 
 ## Status
 
-Piloting with UBC Family Medicine. Built by a resident who lived the problem.
+Archived. This was piloted early on with a small group of family medicine preceptors and residents. Built by a resident who lived the problem.
 
 ## License
 
