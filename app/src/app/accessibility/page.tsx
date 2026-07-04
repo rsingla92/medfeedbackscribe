@@ -162,10 +162,10 @@ export default function AccessibilityPage() {
               We will investigate and respond within five business days.
             </p>
             <a
-              href="mailto:accessibility@debriefmd.ca"
+              href="mailto:accessibility@med-student-feedback-scribe.dev"
               className="inline-block font-[family-name:var(--font-mono)] text-sm font-medium text-accent underline underline-offset-2 hover:text-accent-hover transition-colors"
             >
-              accessibility@debriefmd.ca
+              accessibility@med-student-feedback-scribe.dev
             </a>
           </section>
 

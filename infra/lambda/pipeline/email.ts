@@ -10,7 +10,7 @@
  * email — and is stricter than the Resend template in the Next.js app.
  *
  * Env vars:
- *   SES_FROM_EMAIL       — from address (default noreply@debriefmd.ca)
+ *   SES_FROM_EMAIL       — from address (default noreply@med-student-feedback-scribe.dev)
  *   SES_APP_URL          — optional base URL for the "review" deep link
  *   PROGRAM_ADMIN_EMAIL  — optional BCC for program admins (set by pipeline.ts)
  */
@@ -22,7 +22,7 @@ import {
 } from "@aws-sdk/client-sesv2";
 import type { AssessmentNotificationOptions } from "./types.js";
 
-const DEFAULT_FROM = "Debrief <noreply@debriefmd.ca>";
+const DEFAULT_FROM = "Debrief <noreply@med-student-feedback-scribe.dev>";
 
 let _sesClient: SESv2Client | null = null;
 function getSesClient(): SESv2Client {
@@ -108,7 +108,7 @@ export async function sendAssessmentNotification(
 
   const roleLabel = role === "preceptor" ? "Preceptor" : "Resident";
   const otherPerson = role === "preceptor" ? residentName : preceptorName;
-  const appUrl = process.env.SES_APP_URL ?? "https://debriefmd.ca";
+  const appUrl = process.env.SES_APP_URL ?? "https://med-student-feedback-scribe.dev";
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">

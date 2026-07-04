@@ -170,7 +170,7 @@ export default function ForProgramsPage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
-              href="mailto:pilot@debriefmd.ca?subject=Program%20inquiry"
+              href="mailto:pilot@med-student-feedback-scribe.dev?subject=Program%20inquiry"
               className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-8 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
             >
               Request a pilot
@@ -348,10 +348,10 @@ export default function ForProgramsPage() {
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <a
-                href="mailto:pilot@debriefmd.ca?subject=Program%20inquiry"
+                href="mailto:pilot@med-student-feedback-scribe.dev?subject=Program%20inquiry"
                 className="inline-flex h-12 w-full items-center justify-center rounded-[var(--radius-md)] bg-accent px-10 text-base font-semibold text-white transition-colors hover:bg-accent-hover sm:w-auto"
               >
-                pilot@debriefmd.ca
+                pilot@med-student-feedback-scribe.dev
               </a>
               <Link
                 href="/security"

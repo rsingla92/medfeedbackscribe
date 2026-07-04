@@ -412,7 +412,7 @@ export function SiteFooter() {
               </li>
               <li>
                 <a
-                  href="mailto:pilot@debriefmd.ca?subject=Program%20inquiry"
+                  href="mailto:pilot@med-student-feedback-scribe.dev?subject=Program%20inquiry"
                   className="text-sm text-foreground hover:text-accent transition-colors"
                 >
                   Request a pilot

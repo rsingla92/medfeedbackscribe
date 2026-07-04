@@ -115,7 +115,7 @@ export async function POST(
     );
 
     const subject = `Your Coaching Note — ${meta.date}`;
-    const dashboardUrl = `${process.env.AUTH_URL ?? "https://debriefmd.ca"}/dashboard`;
+    const dashboardUrl = `${process.env.AUTH_URL ?? "https://med-student-feedback-scribe.dev"}/dashboard`;
     const html = `<!doctype html>
 <html><body style="margin:0;padding:0;background:#faf8f5;font-family:'DM Sans',-apple-system,system-ui,sans-serif;color:#1c1917;">
 <div style="max-width:480px;margin:0 auto;padding:48px 24px;">

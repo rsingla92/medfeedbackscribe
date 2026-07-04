@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     return page({
       status: 500,
       title: "Something went wrong",
-      body: `<p>We couldn't confirm your email right now. Try the link again in a minute — if it keeps failing, email <span class="accent">hello@debriefmd.ca</span>.</p>`,
+      body: `<p>We couldn't confirm your email right now. Try the link again in a minute — if it keeps failing, email <span class="accent">hello@med-student-feedback-scribe.dev</span>.</p>`,
     });
   }
 

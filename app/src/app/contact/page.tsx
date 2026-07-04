@@ -12,22 +12,22 @@ export const metadata: Metadata = {
 const contactBlocks = [
   {
     label: "General",
-    email: "hello@debriefmd.ca",
-    href: "mailto:hello@debriefmd.ca",
+    email: "hello@med-student-feedback-scribe.dev",
+    href: "mailto:hello@med-student-feedback-scribe.dev",
     description:
       "Product questions, feedback, anything else. This is the right place to start.",
   },
   {
     label: "Pilot inquiries",
-    email: "pilot@debriefmd.ca",
-    href: "mailto:pilot@debriefmd.ca?subject=Program%20inquiry",
+    email: "pilot@med-student-feedback-scribe.dev",
+    href: "mailto:pilot@med-student-feedback-scribe.dev?subject=Program%20inquiry",
     description:
       "Program directors and residency administrators: reach out here to start a conversation about a pilot. We respond within two business days.",
   },
   {
     label: "Privacy or security questions",
-    email: "privacy@debriefmd.ca",
-    href: "mailto:privacy@debriefmd.ca",
+    email: "privacy@med-student-feedback-scribe.dev",
+    href: "mailto:privacy@med-student-feedback-scribe.dev",
     description:
       "Questions about data handling, our subprocessors, or requesting a Data Processing Agreement. See also our security page.",
   },

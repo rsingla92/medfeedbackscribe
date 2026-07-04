@@ -53,7 +53,7 @@ export function micError(err: unknown): ErrorCopy {
   return {
     title: "Couldn't start recording",
     description:
-      "Something went wrong accessing the microphone. Reload the page and try again; if it keeps happening, email hello@debriefmd.ca.",
+      "Something went wrong accessing the microphone. Reload the page and try again; if it keeps happening, email hello@med-student-feedback-scribe.dev.",
     action: { label: "Reload page", onClick: () => window.location.reload() },
   };
 }
@@ -74,7 +74,7 @@ export function uploadError(err: unknown): ErrorCopy {
     return {
       title: "Recording is too long to upload",
       description:
-        "This recording exceeds our upload size. Shorter recordings (a few minutes) are the sweet spot. Contact us if you need to keep this one: hello@debriefmd.ca.",
+        "This recording exceeds our upload size. Shorter recordings (a few minutes) are the sweet spot. Contact us if you need to keep this one: hello@med-student-feedback-scribe.dev.",
     };
   }
   if (/401|403|unauth/i.test(message)) {
@@ -110,7 +110,7 @@ export function saveError(what: string): ErrorCopy {
   return {
     title: `Couldn't save ${what}`,
     description:
-      "Your changes are still here on this page, but they didn't reach the server. Try saving again. If it keeps failing, leave the page open and email hello@debriefmd.ca.",
+      "Your changes are still here on this page, but they didn't reach the server. Try saving again. If it keeps failing, leave the page open and email hello@med-student-feedback-scribe.dev.",
     action: { label: "Try again" },
   };
 }
@@ -122,7 +122,7 @@ export function exportError(format: "PDF" | "CSV", hint?: string): ErrorCopy {
     title: `${format} export failed`,
     description:
       hint ??
-      "The server couldn't build the export. Try once more; if it keeps failing, email hello@debriefmd.ca with the session ID so we can help.",
+      "The server couldn't build the export. Try once more; if it keeps failing, email hello@med-student-feedback-scribe.dev with the session ID so we can help.",
     action: { label: "Try again" },
   };
 }
@@ -149,7 +149,7 @@ export function reprocessError(apiMessage?: string): ErrorCopy {
     title: "Couldn't start reprocessing",
     description:
       apiMessage ??
-      "The server couldn't re-queue this session. Wait a minute and try again; if the issue persists, email hello@debriefmd.ca.",
+      "The server couldn't re-queue this session. Wait a minute and try again; if the issue persists, email hello@med-student-feedback-scribe.dev.",
     action: { label: "Try again" },
   };
 }
@@ -188,13 +188,13 @@ export function authError(code: string | undefined): ErrorCopy {
       return {
         title: "Sign-in is misconfigured",
         description:
-          "Something is wrong on our end, not yours. Please email hello@debriefmd.ca so we can look into it.",
+          "Something is wrong on our end, not yours. Please email hello@med-student-feedback-scribe.dev so we can look into it.",
       };
     default:
       return {
         title: "Something went wrong signing in",
         description:
-          "Give it another try. If it keeps failing, email hello@debriefmd.ca and tell us what you tried.",
+          "Give it another try. If it keeps failing, email hello@med-student-feedback-scribe.dev and tell us what you tried.",
         action: { label: "Try again" },
       };
   }

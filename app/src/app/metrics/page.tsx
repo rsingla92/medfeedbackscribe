@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { sql } from "@/lib/db/client";
 
 /** Pilot-phase admin emails. Override via PILOT_ADMIN_EMAILS (comma-separated). */
-const PILOT_ADMINS = (process.env.PILOT_ADMIN_EMAILS ?? "admin@debriefmd.ca")
+const PILOT_ADMINS = (process.env.PILOT_ADMIN_EMAILS ?? "admin@med-student-feedback-scribe.dev")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);

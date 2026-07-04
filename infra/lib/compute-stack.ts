@@ -25,7 +25,7 @@ interface DebriefComputeStackProps extends cdk.StackProps {
   githubRepo?: string;
 }
 
-const SES_DOMAIN = 'debriefmd.ca';
+const SES_DOMAIN = 'med-student-feedback-scribe.dev';
 const SES_FROM_EMAIL = `noreply@${SES_DOMAIN}`;
 
 /**

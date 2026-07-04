@@ -153,7 +153,7 @@ export function OnboardingForm({ authEmail }: { authEmail: string }) {
               <p className="text-xs text-error">
                 We saved your profile but couldn&rsquo;t send the email.
                 Try again from profile settings, or contact
-                hello@debriefmd.ca if it keeps failing.
+                hello@med-student-feedback-scribe.dev if it keeps failing.
               </p>
             )}
           </div>

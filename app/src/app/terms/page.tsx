@@ -184,10 +184,10 @@ export default function TermsPage() {
             <p className="text-muted text-sm">
               Email us at{" "}
               <a
-                href="mailto:legal@debriefmd.ca"
+                href="mailto:legal@med-student-feedback-scribe.dev"
                 className="text-accent underline underline-offset-2 hover:text-accent-hover"
               >
-                legal@debriefmd.ca
+                legal@med-student-feedback-scribe.dev
               </a>
               .
             </p>

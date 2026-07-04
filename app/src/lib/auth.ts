@@ -41,7 +41,7 @@ const config: NextAuthConfig = {
       name: "Email",
       type: "email",
       maxAge: 24 * 60 * 60,
-      from: process.env.SES_FROM_EMAIL ?? "noreply@debriefmd.ca",
+      from: process.env.SES_FROM_EMAIL ?? "noreply@med-student-feedback-scribe.dev",
       server: {},
       sendVerificationRequest: sendMagicLinkEmail,
       options: {},

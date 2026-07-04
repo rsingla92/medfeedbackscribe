@@ -30,7 +30,7 @@ npx cdk bootstrap aws://687591846902/ca-central-1
 npx cdk deploy DebriefDataStack
 
 # 4. Add the SesDkim1/2/3 + SPF + DMARC records printed as CFN outputs
-#    to the debriefmd.ca zone. Wait ~15 min for SES verification.
+#    to the med-student-feedback-scribe.dev zone. Wait ~15 min for SES verification.
 
 # 5. Deploy the compute stack (SQS, Lambda, ECR, App Runner, GH OIDC).
 #    First deploy will likely fail on App Runner — see "First deploy" below.

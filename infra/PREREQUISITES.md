@@ -44,14 +44,14 @@ npm install -g aws-cdk
 cdk --version    # >= 2.170.0
 ```
 
-### 5. DNS access to `debriefmd.ca`
+### 5. DNS access to `med-student-feedback-scribe.dev`
 
 You'll need to add records to the zone:
 
 - **Immediately after `cdk deploy DebriefDataStack`**: 3 DKIM CNAMEs + 1 SPF
   TXT + 1 DMARC TXT (exact values printed as CloudFormation outputs).
 - **Later** (App Runner custom domain, optional): validation + target
-  CNAMEs for `debriefmd.ca`.
+  CNAMEs for `med-student-feedback-scribe.dev`.
 
 Document who controls the DNS (Route 53? Cloudflare? Registrar DNS?) and make
 sure you have access.
@@ -109,13 +109,13 @@ After `cdk deploy DebriefDataStack`:
 
 1. Copy the `SesDkim1Name`/`Value`, `SesDkim2Name`/`Value`, `SesDkim3Name`/`Value`
    outputs.
-2. Add them as **CNAME** records to the `debriefmd.ca` zone.
-3. Add the SPF hint as a **TXT** record on `debriefmd.ca`.
-4. Add the DMARC hint as a **TXT** record on `_dmarc.debriefmd.ca`.
+2. Add them as **CNAME** records to the `med-student-feedback-scribe.dev` zone.
+3. Add the SPF hint as a **TXT** record on `med-student-feedback-scribe.dev`.
+4. Add the DMARC hint as a **TXT** record on `_dmarc.med-student-feedback-scribe.dev`.
 5. Wait 5–30 min. Verify:
    ```sh
    aws ses get-identity-verification-attributes \
-     --identities debriefmd.ca --region ca-central-1
+     --identities med-student-feedback-scribe.dev --region ca-central-1
    ```
    `VerificationStatus: Success` means you can now send.
 6. By default SES starts in **sandbox** mode — you can only send to verified
